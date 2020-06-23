@@ -132,7 +132,44 @@ def save_5hz_lpf_pupil(subject, block_name):
     HLTP_pupil.save(filt_pupil, HLTP_pupil.MEG_pro_dir + '/' + subject + 
                     '/clean_5hz_lpf_pupil_' + block_name + '.pkl')
     return True
+
+def find_any_blinks_in_prestim():        
+    # save blink starts & ends for further analysis:
+    for subject in HLTP_pupil.subjects:  
+        blinks = {'start'}
+        task_blinks = []
+        for block_name in HLTP_pupil.block_names[:-2]:
+            fname = HLTP_pupil.MEG_pro_dir + '/' + subject + \
+                                  '/' + block_name + '_stage2_raw.fif'
+            if not path.exists(fname): 
+                print('No such file ' + fname); continue
+            raw = mne.io.read_raw_fif(fname, preload = True)
+            events = mne.find_events(raw, stim_channel=HLTP_pupil.stim_channel, 
+                                          mask = HLTP_pupil.event_id['Stimulus'], 
+                                          mask_type = 'and')
+            file_name = HLTP_pupil.MEG_pro_dir + '/' + subject + \
+                        '/raw_pupil_' + block_name + '.pkl'
+            if not path.exists(file_name): 
+                print('No such file ' + file_name); continue
+            pupil_data = HLTP_pupil.load(file_name)
+            blink_start, blink_end = get_blinks(pupil_data, subject)
+            e_start, e_end = events[:, 0] - 2 * raw.info['sfreq'], events[:, 0]
+            blinks = np.zeros( len(e_start) ).astype('bool')
+            for epoch_i in range(len(e_start)):
+                # blink started during 
+                start_during = sum((blink_start > e_start[epoch_i]) & 
+                                   (blink_start < e_end[epoch_i]))            
+                # blink ended during
+                end_during = sum((blink_end > e_start[epoch_i]) & 
+                                   (blink_end < e_end[epoch_i])) 
+                # started before and ended after: Unlikely since blinks are short,
+                # this would be mossing data
+                blinks[epoch_i] = start_during | end_during
+            task_blinks.append(blinks)     
+        HLTP_pupil.save(np.concatenate(task_blinks), HLTP_pupil.MEG_pro_dir 
+                       + '/' + subject +  '/blinks_for_prestim_epochs.pkl')   
     
+            
 for subject in HLTP_pupil.subjects:        
 
     for block_name in HLTP_pupil.block_names:
@@ -141,7 +178,5 @@ for subject in HLTP_pupil.subjects:
         if not r: continue;
         save_clean_interp_pupil(subject, block_name)  
         save_resample_pupil(subject, block_name)    
-        
-    
-    
+
     
