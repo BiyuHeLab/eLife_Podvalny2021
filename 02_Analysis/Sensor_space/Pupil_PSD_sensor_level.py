@@ -24,41 +24,6 @@ from statsmodels.tools.eval_measures import bic, aic
 from mne.stats import permutation_cluster_test
 from statsmodels.stats.multitest import multipletests
 
-def get_epochs_and_pupil(sub_pro_dir, b, subject, res = 20):
-    epoch_fname = sub_pro_dir + '/' + b + '_ds-epo.fif'
-        
-    if not path.exists(epoch_fname):
-        print('No such file'); return np.NaN, np.NaN;
-        
-    epochs = mne.read_epochs(epoch_fname, preload = True )
-    
-    pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + '/pupil_states_' + 
-                            b + subject + '.pkl')
-    group_percentile = np.arange(0., 100., res);
-    perc = np.percentile(pupil_states.mean_pupil, group_percentile)
-    p_group = np.digitize(pupil_states.mean_pupil, perc)
-    pupil_group = p_group
-    
-    epochs.events[:, 2] = pupil_group
-    return epochs, pupil_states.mean_pupil.values
-
-def save_sensor_PSD_w_pupil(res):
-    
-    for b in ['task_prestim', 'rest01', 'rest02']:
-        for s, subject in enumerate(subjects):
-            sub_pro_dir = MEG_pro_dir + '/' + subject
-            
-            epochs, pupil = get_epochs_and_pupil(sub_pro_dir, b, subject, res) 
-            if not (type(epochs) == mne.epochs.EpochsFIF):  continue
-        
-            # remove linear treand from each epoch        
-            epochs._data = scipy.signal.detrend(epochs.get_data(), axis = -1)
-    
-            # power spectrum
-            psd, freq = mne.time_frequency.psd_welch(epochs, n_fft = 2**9)
-            HLTP_pupil.save([psd, freq, pupil], HLTP_pupil.result_dir + 
-                        '/PSD' + b + subject +'.pkl') 
-
 def prepare_PSD_fband_pupil_df(b): 
     dfs = []  
     for s, subject in enumerate(subjects):
@@ -117,9 +82,9 @@ def fitLM_PSD_w_pupil():
             res[fband + 'Lpval_corrected'] = multipletests(res[fband + 'Lpval'], 
                method = 'fdr_bh')[1]  
         pd.DataFrame(res).to_pickle(
-                HLTP_pupil.result_dir + '/LM_betas_' + b + '.pkl')
+                HLTP_pupil.result_dir + '/LM_betas_sensor_' + b + '.pkl')
         
-
+# 
            
 def save_sensor_PSD_by_pupil(res):
     n_subj = len(subjects)
@@ -316,53 +281,154 @@ def fitLM_pupil_power_rest():
         
 def fitLM_pupil_power_all_sensors():        
     return
-        
+    
+fitLM_PSD_w_pupil()
+
+    
 # run functions        
-save_sensor_PSD_by_pupil(10) # resolution of pupil binning
-combine_rest_runs(10)
-update_bhv_df_w_PSD()
-fitLM_pupil_power(10)
+#save_sensor_PSD_by_pupil(10) # resolution of pupil binning
+#combine_rest_runs(10)
+#update_bhv_df_w_PSD()
+#fitLM_pupil_power(10)
 
 # not used in paper:
-def ANOVA_PSD_by_pupil_notused():
-    '''  ANOVA with pupil size as a factor - currently not used'''
+# def ANOVA_PSD_by_pupil_notused():
+#     '''  ANOVA with pupil size as a factor - currently not used'''
 
-    factor_levels = [5]
-    effects = 'A'
-    p_accept = 0.05
+#     factor_levels = [5]
+#     effects = 'A'
+#     p_accept = 0.05
     
-    def stat_fun(*args):
-            return mne.stats.f_mway_rm(np.swapaxes(np.array(args), 0, 1),
-                   factor_levels, effects = effects, return_pvals = False)[0]
+#     def stat_fun(*args):
+#             return mne.stats.f_mway_rm(np.swapaxes(np.array(args), 0, 1),
+#                    factor_levels, effects = effects, return_pvals = False)[0]
             
-    for b in ['task_prestim', 'rest']:
-        mean_meg, freq = HLTP_pupil.load(HLTP_pupil.result_dir + 
-                        '/mean_meg_by_pupil_state' + b + '.pkl')
+#     for b in ['task_prestim', 'rest']:
+#         mean_meg, freq = HLTP_pupil.load(HLTP_pupil.result_dir + 
+#                         '/mean_meg_by_pupil_state' + b + '.pkl')
     
-        n_subj = mean_meg.shape[0]  
-        f_thresh = mne.stats.f_threshold_mway_rm(n_subj - 1, 
-                                                 factor_levels, effects, 0.01)
-        con, pos = HLTP_pupil.get_connectivity()
+#         n_subj = mean_meg.shape[0]  
+#         f_thresh = mne.stats.f_threshold_mway_rm(n_subj - 1, 
+#                                                  factor_levels, effects, 0.01)
+#         con, pos = HLTP_pupil.get_connectivity()
     
-        for band, freq_range in HLTP_pupil.freq_bands.items():
+#         for band, freq_range in HLTP_pupil.freq_bands.items():
          
-            band_mean = np.nanmean(mean_meg[:, :, :, 
-                        (freq > freq_range[0]) & (freq <= freq_range[1])], 
-                        axis = -1)
+#             band_mean = np.nanmean(mean_meg[:, :, :, 
+#                         (freq > freq_range[0]) & (freq <= freq_range[1])], 
+#                         axis = -1)
             
-            T_obs, clusters, cluster_p_values, H0 = \
-                    mne.stats.permutation_cluster_test(
-                            np.swapaxes(band_mean, 0, 1), 
-                            connectivity = con.astype('int'),
-                            n_jobs = 24, tail = 0, 
-                            threshold = f_thresh, stat_fun=stat_fun, 
-                            n_permutations = 10000)
+#             T_obs, clusters, cluster_p_values, H0 = \
+#                     mne.stats.permutation_cluster_test(
+#                             np.swapaxes(band_mean, 0, 1), 
+#                             connectivity = con.astype('int'),
+#                             n_jobs = 24, tail = 0, 
+#                             threshold = f_thresh, stat_fun=stat_fun, 
+#                             n_permutations = 10000)
                     
-            mask = np.zeros(T_obs.shape, dtype=bool)
-            good_cluster_inds = np.where( cluster_p_values < p_accept)[0]
-            if len(good_cluster_inds) > 0:
-                for g in good_cluster_inds:
-                    mask[clusters[g]] = True
+#             mask = np.zeros(T_obs.shape, dtype=bool)
+#             good_cluster_inds = np.where( cluster_p_values < p_accept)[0]
+#             if len(good_cluster_inds) > 0:
+#                 for g in good_cluster_inds:
+#                     mask[clusters[g]] = True
                     
-            HLTP_pupil.save([T_obs, mask], HLTP_pupil.result_dir + 
-                            '/pupil_states_ANOVA_' + band + b + '.pkl')
+#             HLTP_pupil.save([T_obs, mask], HLTP_pupil.result_dir + 
+#                             '/pupil_states_ANOVA_' + band + b + '.pkl')
+
+# def blink_control_fitLM_PSD_w_pupil():
+#     '''see if an occurance of a blink predicts change in power,
+#     maybe include as a potential nuisance regressor?'''
+#     b = 'task_prestim'
+#     dfs = []  
+#     for s, subject in enumerate(subjects):
+#         fname = HLTP_pupil.result_dir + '/PSD' + b + subject +'.pkl'
+#         if not path.exists(fname):
+#             print('No such file'); continue
+#         psd, freq, pupil = HLTP_pupil.load(fname) 
+#         blinks = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir 
+#                        + '/' + subject +  '/blinks_for_prestim_epochs.pkl')
+        
+#         df = pd.DataFrame({"subject" :np.repeat(subject, len(pupil)), 
+#                            "blinks"  :blinks,
+#                            "pupil" :pupil})
+#         # calculate mean power in freq bands:
+#         n_chan = psd.shape[1]
+#         for band, frange in HLTP_pupil.freq_bands.items():                          
+#             band_pwr = psd[:, :, (freq > frange[0]) & (freq <= frange[1])
+#                     ].mean(axis = -1)
+#             for chan in range(n_chan):
+#                 df[band + str(chan)] = band_pwr[:, chan]
+#         dfs.append(df)   
+#     df = pd.concat(dfs)
+
+#     n_chan = 272
+        
+#     # initialize the results dictionary
+#     res = {}
+#     keys = [ 'Blink', 'Q', 'L']
+#     for fband in HLTP_pupil.freq_bands.keys():
+#         res[fband + 'inter'] = np.zeros(n_chan);
+#         for k in keys:
+#             res[fband + '_pe' + k] = np.zeros(n_chan);
+#             res[fband + '_pval' + k] = np.zeros(n_chan)
+#     # fit a model for each sensor    
+#     for fband in HLTP_pupil.freq_bands.keys():
+#         for chan in range(n_chan):
+#             df[fband + str(chan)] = (np.log(df[fband + str(chan)]))
+#             mdf_Q = smf.mixedlm(fband + str(chan) + 
+#                                 " ~ np.power(pupil, 2) + pupil + C(blinks)", 
+#                         df.dropna(), groups = df.dropna()["subject"]
+#                         ).fit(method='powell')
+#             res[fband + 'inter'][chan] = mdf_Q.params[0].copy();
+#             for n_param in range(3):
+#                 res[fband + '_pe' + keys[n_param]][chan
+#                    ] = mdf_Q.params[n_param + 1].copy();
+#                 res[fband + '_pval' + keys[n_param]][chan
+#                    ] = mdf_Q.pvalues[n_param + 1].copy();
+#     # correct for multiple comparisons across sensors
+#     for fband in HLTP_pupil.freq_bands.keys():
+#         for k in keys:
+#             res[fband + '_pval_corrected' + k] = multipletests(
+#                     res[fband + '_pval' + k], method = 'fdr_bh')[1]
+            
+#     for fband in HLTP_pupil.freq_bands.keys():
+#         for k in keys:
+#             print(k, fband, np.sum(res[fband + '_pval_corrected'+ k] < 0.05))
+         
+#     pd.DataFrame(res).to_pickle(
+#             HLTP_pupil.result_dir + '/LM_blink_control_betas_' + b + '.pkl')
+
+def get_epochs_and_pupil(sub_pro_dir, b, subject, res = 20):
+    epoch_fname = sub_pro_dir + '/' + b + '_ds-epo.fif'
+        
+    if not path.exists(epoch_fname):
+        print('No such file'); return np.NaN, np.NaN;
+        
+    epochs = mne.read_epochs(epoch_fname, preload = True )
+    
+    pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + '/pupil_states_' + 
+                            b + subject + '.pkl')
+    group_percentile = np.arange(0., 100., res);
+    perc = np.percentile(pupil_states.mean_pupil, group_percentile)
+    p_group = np.digitize(pupil_states.mean_pupil, perc)
+    pupil_group = p_group
+    
+    epochs.events[:, 2] = pupil_group
+    return epochs, pupil_states.mean_pupil.values
+
+def save_sensor_PSD_w_pupil(res):
+    
+    for b in ['task_prestim', 'rest01', 'rest02']:
+        for s, subject in enumerate(subjects):
+            sub_pro_dir = MEG_pro_dir + '/' + subject
+            
+            epochs, pupil = get_epochs_and_pupil(sub_pro_dir, b, subject, res) 
+            if not (type(epochs) == mne.epochs.EpochsFIF):  continue
+        
+            # remove linear treand from each epoch        
+            epochs._data = scipy.signal.detrend(epochs.get_data(), axis = -1)
+    
+            # power spectrum
+            psd, freq = mne.time_frequency.psd_welch(epochs, n_fft = 2**9)
+            HLTP_pupil.save([psd, freq, pupil], HLTP_pupil.result_dir + 
+                        '/PSD' + b + subject +'.pkl') 
