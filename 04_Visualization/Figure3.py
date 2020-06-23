@@ -11,6 +11,7 @@ import HLTP_pupil
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot  as plt
+from matplotlib import cm
 from mne import viz
 import mne
 
@@ -19,35 +20,9 @@ freq_bands = dict(
     delta=(1, 4), theta=(4, 8), alpha=(8, 13), beta=(13, 30), gamma=(30, 90))  
 FS_dir = HLTP_pupil.MEG_pro_dir + '/freesurfer'
 
-def plot_fig_3A(ename):
-
-    norm_stcs = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + 
-                            '/pupil_result/norm_stc_' + ename)
-    
-    stcs = norm_stcs
-    n_subjects = len(norm_stcs)
-    stc_sub_mean = {}
-    for grp in range(1,6):
-        data = np.array([stcs[s][str(grp)].data for s in range(0, n_subjects)])
-        stc_sub_mean[grp] = stcs[0][str(grp)].copy()
-        stc_sub_mean[grp]._data = data.mean(axis = 0)
-    
-    # Plot mean power for each frequency band
-    for fband, band in enumerate(freq_bands.keys()):
-        for grp in range(1, 6):
-            band_stc = stc_sub_mean[grp].copy().crop(fband, fband).mean() 
-            fig = viz.plot_source_estimates(band_stc, subjects_dir=FS_dir, 
-                    subject='fsaverage', colorbar = False, surface = 'inflated',
-                    hemi='rh', transparent = False, background = 'white',
-                    time_label='', views='lat', alpha = 0.9,
-                    colormap = 'rainbow', backend = 'matplotlib',
-                    clim=dict(kind='value', lims=(-.15, 0., .15)))
-    
-            fig.savefig(figures_dir + '/DICS' + ename + '_raw_fbands_src_' 
-                         + band + str(grp) + '.png', 
-                    bbox_inches = 'tight', transparent=True)  
-                            
+                         
 def plot_fig_3B():
+    #Plot all the mixed model fit curves on top of binned data
     for b in ['task_prestim', 'rest']:
         res = pd.read_pickle(HLTP_pupil.result_dir + '/LM_betas_' + b + '.pkl')  
         df = pd.read_pickle(HLTP_pupil.MEG_pro_dir + 
@@ -91,7 +66,7 @@ def plot_fig_3B():
                             res[fband + 'L'][roi] * pup, 
                             linewidth = 3, zorder = 100, color = colors[f],
                             label = fband)
-                plt.ylim([(m - e).min(), (m - e).min() + 0.4])
+                plt.ylim([(m - e).min(), (m - e).min() + 0.5])
                 plt.xlim([-2.5, 2.5])
                 plt.locator_params(axis = 'y', nbins = 6)
                 ax.spines['left'].set_position(('outward', 10))
@@ -101,8 +76,47 @@ def plot_fig_3B():
                 fig.savefig(figures_dir + '/roi_pwr_' + b + fband + str(roi) + 
                             '.png', bbox_inches = 'tight', transparent = True) 
                 #plt.legend()
+def plot_heat_maps():
+    hmQ = {'task_prestim':np.zeros((7,5)), 'rest':np.zeros((7,5))}
+    hmL = {'task_prestim':np.zeros((7,5)), 'rest':np.zeros((7,5))}
+
+    for b in ['task_prestim', 'rest']:
+        for f, fband in enumerate(HLTP_pupil.freq_bands.keys()):
+            for roi in range(n_rois):
+                mdf_Q = pd.read_pickle(HLTP_pupil.result_dir + '/LM_stats_'
+                                       + str(roi) + fband + b + '.pkl')
+                hmQ[b][roi, f] = mdf_Q.params[1]
+                hmL[b][roi, f] = mdf_Q.params[2]
+        fig, ax = plt.subplots(1, 1,figsize = (1.5,3))     
+        
+        plt.imshow(hmQ[b], cmap = 'Spectral_r', vmin = -0.03, vmax = 0.03)
+        ax.axis('off')
+        fig.savefig(figures_dir + '/roi_betasQ_' + b + '.png', 
+                bbox_inches = 'tight', transparent = True)
+        fig, ax = plt.subplots(1, 1,figsize = (1.5,3))     
+
+        plt.imshow(hmL[b], cmap = 'Spectral_r', vmin = -0.05, vmax = 0.05)
+        ax.axis('off')
+        fig.savefig(figures_dir + '/roi_betasL_' + b + '.png', 
+                bbox_inches = 'tight', transparent = True)
+    # compare
+    fig, ax = plt.subplots(1, 1,figsize = (1.5,3))     
+    plt.imshow(hmQ['task_prestim'] - hmQ['rest'], 
+               cmap = 'Spectral_r', vmin = -0.03, vmax = 0.03)
+    ax.axis('off')
+    fig.savefig(figures_dir + '/roi_betasQ_diff.png', 
+                bbox_inches = 'tight', transparent = True)
+    
+    fig, ax = plt.subplots(1, 1,figsize = (1.5,3))     
+    plt.imshow(hmL['task_prestim'] - hmL['rest'], 
+               cmap = 'Spectral_r', vmin = -0.05, vmax = 0.03)
+    ax.axis('off')
+    fig.savefig(figures_dir + '/roi_betasL_diff.png', 
+                bbox_inches = 'tight', transparent = True)
                 
 def plot_fig_3C():
+    colors = cm.winter(np.linspace(0, 255, 5).astype('int'))
+
     for b in ['task_prestim', 'rest']:
         res = pd.read_pickle(HLTP_pupil.result_dir + '/LM_betas_' + \
                              b + '.pkl')            
@@ -142,7 +156,7 @@ def plot_RSN_atlas():
     fsaverage = datasets.fetch_surf_fsaverage()
     imgfig = plotting.plot_roi(atlas_yeo, 
                   cut_coords=(8, -4, 9), colorbar=True, cmap='Paired')
-    imgfig.savefig(figures_dir + '/atlas_roi.png', bbox_inches = 'tight', transparent = True)
+    imgfig.savefig(figures_dir + '/atlas_roi.png')
     
     atlas_name = 'Yeo2011_7Networks_N1000'
     brain = Brain('fsaverage', 'lh', 'inflated', subjects_dir=FS_dir,
