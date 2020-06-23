@@ -13,7 +13,8 @@ import sys
 sys.path.append('../../')
 from os import path
 import HLTP_pupil
-from scipy.stats import linregress, zscore
+
+from scipy.stats import linregress, zscore, ttest_1samp
 from scipy.signal import welch
 import numpy as np
 from scipy.signal import argrelextrema
@@ -101,7 +102,6 @@ def save_event_related_pupil(block_name):
                 (pupil_events['sample'] < len(filt_pupil) - d)]
         trials = np.stack([filt_pupil[(s - d):(s + d)]
                                 for s in pupil_events['sample'].values])
-        
         mean_con.append(np.mean(trials[(pupil_events.event_type == 'con'
                                    ).values.astype('bool'), :], axis = 0))   
         mean_dil.append(np.mean(trials[(pupil_events.event_type == 'dil'
@@ -141,9 +141,35 @@ def update_bhv_df_w_pupil(block):
         bhv_df.loc[bhv_df.subject == subject, 'pupil_size_pre'] = pupil_group
     bhv_df.to_pickle(HLTP_pupil.MEG_pro_dir +
                      '/results/all_subj_bhv_df_w_pupil.pkl')
-   
     return
 
+def test_effect_of_blinks_on_pupil_size():
+    ''' is there a diffrence in pupil size of pieces of data with or without blinks?'''
+    blink_pupil = []; no_blink_pupil = []
+    dfs = []
+    for subject in HLTP_pupil.subjects:  
+        blinks = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir
+                       + '/' + subject +  '/blinks_for_prestim_epochs.pkl')
+        pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + 
+                               '/pupil_states_task_prestim' + subject + '.pkl')
+        df = pd.DataFrame({"subject" :np.repeat(subject, len(blinks)), 
+                           "blinks"  :blinks,
+                           "pupil" :pupil_states.mean_pupil})
+        dfs.append(df)
+        
+        blink_pupil.append(pupil_states.mean_pupil[blinks].mean())
+        no_blink_pupil.append(pupil_states.mean_pupil[~blinks].mean())
+    
+        print(subject, sum(blinks))
+        
+    adf = pd.concat(dfs)  
+    mdf_Q = smf.mixedlm("pupil ~ C(blinks)", 
+                        adf.dropna(), groups = adf.dropna()["subject"]
+                        ).fit(method='powell')
+    print(ttest_1samp(np.array(blink_pupil) -  np.array(no_blink_pupil), 0))
+    return
+    
+    
 for block_name in ['rest01', 'rest02']:
     save_pupil_events(block_name)
     save_event_related_pupil(block_name)
