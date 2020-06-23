@@ -219,7 +219,9 @@ for fband, freq in HLTP_pupil.freq_bands.items():
         for b in ['rest01', 'rest02']:
             prep_clean_rest_epochs(b, s, fband)
             
-for s in subjects:   
+for s in subjects: 
+    prep_clean_task_epochs(subject = s, tmin = -.1, tmax = 2, 
+                           epoch_name = 'task_posstim_w_base')
     prep_clean_task_epochs(subject = s, tmin = -2, tmax = 0, 
                            epoch_name = 'task_prestim')
     #prep_clean_task_epochs(subject = s, tmin = 0, tmax = 2, 
