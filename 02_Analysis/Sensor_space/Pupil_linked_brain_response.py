@@ -2,34 +2,31 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jan  3 10:14:20 2020
-How object category representation changes with pre-stimulus pupil nd time
+How object category representation changes with pre-stimulus pupil and time
 
 @author: podvae01
 """
 import HLTP_pupil
 from HLTP_pupil import MEG_pro_dir, subjects
 import numpy as np
-import scipy
-import scipy.stats
-from scipy.stats import sem
+
 import pandas as pd
 import mne
-from mne.time_frequency import psd_multitaper
-from mne.datasets import sample
-from mne.decoding import (SlidingEstimator, GeneralizingEstimator, Scaler,
-                          cross_val_multiscore, LinearModel, get_coef,
-                          Vectorizer, CSP)
+
+from mne.decoding import (SlidingEstimator,
+                          cross_val_multiscore)
 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import accuracy_score
+from statsmodels.stats.anova import AnovaRM
 
-bhv_df = pd.read_pickle(MEG_pro_dir + '/results/all_subj_bhv.pkl')
+
+#bhv_df = pd.read_pickle(MEG_pro_dir + '/results/all_subj_bhv.pkl')
 bhv_df = pd.read_pickle(MEG_pro_dir + 
                         '/results/all_subj_bhv_w_pupil_power.pkl')
-group_percentile = np.arange(0., 100., 20);
+group_percentile = np.arange(0., 100., 20)
 
 mean_meg = []
 for s, subject in enumerate(subjects):
@@ -37,7 +34,7 @@ for s, subject in enumerate(subjects):
     
     # use here 256Hz ds cleaned after ICA data
     epoch_fname = sub_pro_dir + '/task_posstim_ds-epo.fif'
-    epochs = mne.read_epochs(epoch_fname, preload = True )
+    epochs = mne.read_epochs(epoch_fname, preload = True)
     #epochs.apply_baseline(baseline = (0, .05))
     epochs.resample(10, n_jobs = 10)
 
@@ -46,8 +43,8 @@ for s, subject in enumerate(subjects):
     MEG_data = epochs.get_data(picks)
     mean_meg.append(MEG_data.copy())
     
-n_chan = MEG_data.shape[1]; 
-n_times = MEG_data.shape[2]; 
+n_chan = MEG_data.shape[1]
+n_times = MEG_data.shape[2]
 n_subj = len(subjects)
 
 # EFFECT OF PRE-STIM PUPIL ON CATEGORY REPRESENTATION
@@ -75,8 +72,13 @@ for s, subject in enumerate(subjects):
                                          cv = cv, n_jobs = 10)
             scores[grp - 1, :, s] = score.mean(axis = 0)
 HLTP_pupil.save(scores, HLTP_pupil.MEG_pro_dir + 
-                        '/results/cat_decod_score.pkl')     
-# test the effect of prestim pupil and time on devolepemnt of category representations            
+                        '/results/cat_decod_score.pkl')  
+
+
+# test the effect of prestim pupil and time on devolepemnt of category representations
+
+scores = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir +
+                        '/results/cat_decod_score.pkl')
 sub= []; pup = []; tim = []; scr = []
 for s in range(24):
     for p in range(5):
@@ -84,18 +86,14 @@ for s in range(24):
             sub.append(s); pup.append(p); tim.append(t); scr.append(scores[p, t, s])
             
 score_df = pd.DataFrame.from_dict(
-    {'pupil':pup, 'subject':sub, 'score':scr, 'time':tim})
+    {'pupil':pup, 'subject':sub, 'score':np.arcsin(np.sqrt(np.array(scr))), 'time':tim})
                        
-from statsmodels.stats.anova import AnovaRM    
-mod = AnovaRM(score_df, 'score', 'subject', within = ['pupil', 'time'])   
+mod = AnovaRM(score_df, 'score', 'subject', within = ['pupil', 'time'])
 res = mod.fit()
-print(res.summary())    
+print(res.anova_table)
 
 #############################################################################
 # figures to be moved from here
-
-
-
 
 # effects = 'A'
 
