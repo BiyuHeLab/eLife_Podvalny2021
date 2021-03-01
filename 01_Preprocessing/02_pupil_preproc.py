@@ -3,7 +3,7 @@
 """
 Created on Tue Nov  5 17:01:07 2019
 
-Preprocessing of the contionuous pupil size data.
+Preprocessing of the continuous pupil size data.
 Files generated:
     - raw_pupil_' + block_name + '.pkl' - this is just raw data
     - clean_pupil_' + block_name + '.pkl' - raw where blinks replaced with NaNs
@@ -19,11 +19,11 @@ from scipy.interpolate import PchipInterpolator
 from scipy.signal import butter, filtfilt
 from os import path
 ''' Define threshold of blink detection
-Overal, the threshold of -4 was good for most subjects to remove most blinks,
+Overall, the threshold of -4 was good for most subjects to remove most blinks,
 but, upon visual inspection I saw some blinks were not removed 
 for some subjects, therefore I lower the threshold
 '''   
-subj_thr = {}; 
+subj_thr = {}
 for s in HLTP_pupil.subjects: subj_thr[s] = -4.
 for s in ['AC', 'MC', 'JS']: subj_thr[s] = -3.6 
 for s in ['AA', 'SL', 'EC']: subj_thr[s] = -3.7
@@ -33,8 +33,8 @@ for s in ['SF', 'CW', 'AR', 'NM', 'SM']: subj_thr[s] = -3.5
 
 def get_blinks(pupil_data, subject):
     '''Identify blinks in the timecourse of pupil size recording and return 
-    start and end for each blink'''
-    thr = subj_thr[subject];  
+    start and end for each blink (in samples)'''
+    thr = subj_thr[subject]
      
     # setting first and last data point to mean to detect blinks on onset
     pupil_data[0] = np.mean(pupil_data[pupil_data > thr]); 
@@ -163,15 +163,40 @@ def find_any_blinks_in_prestim():
                 end_during = sum((blink_end > e_start[epoch_i]) & 
                                    (blink_end < e_end[epoch_i])) 
                 # started before and ended after: Unlikely since blinks are short,
-                # this would be mossing data
+                # this would be missing data
                 blinks[epoch_i] = start_during | end_during
             task_blinks.append(blinks)     
         HLTP_pupil.save(np.concatenate(task_blinks), HLTP_pupil.MEG_pro_dir 
                        + '/' + subject +  '/blinks_for_prestim_epochs.pkl')   
-    
-            
-for subject in HLTP_pupil.subjects:        
 
+def compute_blink_rates():
+
+    blink_percent = []
+    for subject in HLTP_pupil.subjects:
+        # proportion of prestim intervals with blinks
+        task_blinks = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir
+                                      + '/' + subject + '/blinks_for_prestim_epochs.pkl')
+        blink_percent.append(100 * task_blinks.mean())
+    print("percent trials with prestim intervals with blinks",
+          np.mean(blink_percent), np.std(blink_percent) / np.sqrt(len(HLTP_pupil.subjects)))
+
+    subj_rate = []
+    for subject in HLTP_pupil.subjects:
+        rate = []
+        for block_name in HLTP_pupil.block_names:
+            file_name = HLTP_pupil.MEG_pro_dir + '/' + subject + '/raw_pupil_' + block_name + '.pkl'
+            if not path.exists(file_name):
+                continue
+            pupil_data = HLTP_pupil.load(file_name)
+            blink_start, blink_end = get_blinks(pupil_data, subject)
+            n_blinks = sum(((blink_end - blink_start) / 1200 < 0.5) & ((blink_end - blink_start) / 1200 > 0.05))
+            # beyond this duration it's likely missing data
+            data_duration = pupil_data.shape[0] / HLTP_pupil.raw_fs / 60  # minutes
+            rate.append(n_blinks / data_duration)
+        subj_rate.append(np.median(rate))
+        print(np.mean(subj_rate), np.std(subj_rate) / np.sqrt(len(HLTP_pupil.subjects)))
+            
+for subject in HLTP_pupil.subjects:
     for block_name in HLTP_pupil.block_names:
         save_5hz_lpf_pupil(subject, block_name)
         r = save_blink_clean_pupil(subject, block_name)
@@ -179,4 +204,3 @@ for subject in HLTP_pupil.subjects:
         save_clean_interp_pupil(subject, block_name)  
         save_resample_pupil(subject, block_name)    
 
-    
