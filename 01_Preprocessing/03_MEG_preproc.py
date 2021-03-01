@@ -137,7 +137,7 @@ def prep_clean_rest_epochs(block_name, subject, fband = ''):
     
     samples = np.arange(0, raw.n_times, win)
     events = np.zeros( (len(samples), 3) ).astype('int')
-    events[:, 0] = samples; 
+    events[:, 0] = samples
     events[:, 2] = 1
     epochs = mne.Epochs(raw, events, baseline = None, proj = True, 
                         detrend = 0, tmin = 0, tmax = 2., preload = True)
@@ -148,14 +148,14 @@ def prep_clean_task_epochs(subject, tmin, tmax, epoch_name):
     '''results in downsampled (256Hz), ICA-cleaned, detrended 2 sec epochs
     with clean interpolated pupil'''
     
-    block_epochs = [];
-    blocks = HLTP_pupil.block_names.copy();
+    block_epochs = []
+    blocks = HLTP_pupil.block_names.copy()
     blocks.remove('rest01'); blocks.remove('rest02')
     for b in blocks:
         fdir = HLTP_pupil.MEG_pro_dir + '/' + subject + '/'+ b
         if not path.exists(HLTP_pupil.MEG_pro_dir + '/' + subject + 
                     '/clean_interp_pupil_ds_' + b + '.pkl'): 
-            print('No such file'); continue;
+            print('No such file'); continue
         raw = mne.io.read_raw_fif(fdir + '_ds_raw.fif', preload=True)
         clean_pupil = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/' + subject + 
                     '/clean_interp_pupil_ds_' + b + '.pkl')
@@ -175,6 +175,7 @@ def prep_clean_task_epochs(subject, tmin, tmax, epoch_name):
                         proj=True, baseline=None, preload=True, detrend=0, 
                         verbose=False)
         block_epochs.append(epochs)
+
     #Concatenate    
     #lie about head position, otherwise concatenation doesn't work:
     for b in range(len(block_epochs)):
