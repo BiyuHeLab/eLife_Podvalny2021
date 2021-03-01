@@ -46,8 +46,11 @@ def get_pupil_events(subject, filt_pupil, fs):
 
 def save_pupil_events(block_name):
     for subject in HLTP_pupil.subjects:
-        filt_pupil = HLTP_pupil.load( HLTP_pupil.MEG_pro_dir + '/' + subject + 
+        try:
+            filt_pupil = HLTP_pupil.load( HLTP_pupil.MEG_pro_dir + '/' + subject +
                         '/clean_5hz_lpf_pupil_' + block_name + '.pkl')
+        except:
+            print("Block " + block_name + " is missing for subject " + subject)
     
         pupil_events, event_type, slope, R2 = get_pupil_events(
                 subject, filt_pupil, HLTP_pupil.raw_fs)
@@ -108,8 +111,7 @@ def save_event_related_pupil(block_name):
                                    ).values.astype('bool'), :], axis = 0))
     HLTP_pupil.save([mean_con, mean_dil], 
                      HLTP_pupil.result_dir + '/ERpupil_' + block_name + '.pkl')                  
-        
-        
+
 def save_pupil_PSD(block_name):
     '''calculate and save power spectral density of pupil time course (5m)'''
     file_name = '/clean_interp_pupil_'
@@ -127,8 +129,8 @@ def save_pupil_PSD(block_name):
                         block_name + subject + '.pkl')
 
 def update_bhv_df_w_pupil(block):
-    bhv_df = pd.read_pickle(HLTP_pupil.MEG_pro_dir + 
-                            '/results/all_subj_bhv_df.pkl')
+    bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+                            '/all_subj_bhv_df.pkl')
     for subject in HLTP_pupil.subjects:
         
         pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + 
@@ -138,9 +140,9 @@ def update_bhv_df_w_pupil(block):
             bhv_df = bhv_df[ ~((bhv_df.index == 288) & 
                                (bhv_df.subject == subject))]
             
-        bhv_df.loc[bhv_df.subject == subject, 'pupil_size_pre'] = pupil_group
-    bhv_df.to_pickle(HLTP_pupil.MEG_pro_dir +
-                     '/results/all_subj_bhv_df_w_pupil.pkl')
+        bhv_df.loc[bhv_df.subject == subject, 'pupil'] = pupil_group
+    bhv_df.to_pickle(HLTP_pupil.result_dir +
+                     '/all_subj_bhv_df_w_pupil.pkl')
     return
 
 def test_effect_of_blinks_on_pupil_size():
@@ -171,11 +173,12 @@ def test_effect_of_blinks_on_pupil_size():
     
     
 for block_name in ['rest01', 'rest02']:
-    save_pupil_events(block_name)
-    save_event_related_pupil(block_name)
-    save_pupil_PSD(block_name) 
+    save_pupil_events(block_name) # files for running the analyses of constriction and dilation
+    save_event_related_pupil(block_name) # files for analysis unused in the paper
+    save_pupil_PSD(block_name) # files for inspection and plotting in fig 1
 
-for epoch_name in ['task_prestim', 'rest01', 'rest02']:#'task_prestim', 
+# prepare files for main analyses of pupil state (2-sec mean size)
+for epoch_name in ['task_prestim', 'rest01', 'rest02']:
     save_pupil_state(epoch_name)
 
-update_bhv_df_w_pupil('task_prestim')
+update_bhv_df_w_pupil('task_prestim') # run this before doing the SDT for pupil-dependent behavior
