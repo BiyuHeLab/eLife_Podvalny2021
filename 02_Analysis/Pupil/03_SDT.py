@@ -7,21 +7,17 @@ Created on Mon Jan 28 11:05:03 2019
 """
 import sys
 sys.path.append('../../')
-from os import path
 import HLTP_pupil
 from HLTP_pupil import MEG_pro_dir, subjects
 import numpy as np
 import scipy
-from scipy.optimize import curve_fit
 import scipy.stats
 from scipy.stats import sem, zscore
+from scipy.stats.distributions import chi2
 import pandas as pd
 import statsmodels.formula.api as smf
-from statsmodels.tools.eval_measures import bic, aic
 from statsmodels.stats.multitest import multipletests
 
-bhv_vars = ['HR', 'FAR', 'c', 'd', 'p_corr', 'catRT', 'recRT']
-n_roi = 7
 def sdt_from_df(df):
     n_rec_real = sum(df[df.real_img == True].recognition == 1)
     n_real = len(df[(df.real_img == True) & (df.recognition != 0)])
@@ -63,10 +59,9 @@ def fill_dict_w_bhv(HR, FAR, d, c, p_correct, catRT, recRT, subject, group, IV):
 
 def get_SDT_by_IV(bhv_df, IV):
     ''' calculate Behavioral SDT variables in pupil groups '''
-    group_percentile = np.arange(0., 100., 20);
+    group_percentile = np.arange(0., 100., 20)
     dfs = []
     for subject in subjects:
-        # TODO: update the df w non-digitized pupil for consistency & remove 
         # the  if statement below
         if IV != 'pupil_size_pre':
             pwr = bhv_df.loc[bhv_df.subject == subject, IV].values
@@ -87,12 +82,11 @@ def get_SDT_by_IV(bhv_df, IV):
             dfs.append(pd.DataFrame(bhv_group_val));
     
     sdt_df = pd.concat(dfs)
-    sdt_df.to_pickle(HLTP_pupil.MEG_pro_dir +
-                         '/results/sdt_by_' + IV + '.pkl')
+    sdt_df.to_pickle(HLTP_pupil.result_dir +
+                         '/sdt_by_' + IV + '.pkl')
     return sdt_df
 
-
-def stats_for_SDT(sdt_df, IV, savetag):
+def stats_for_SDT(sdt_df, IV, savetag = '', _reml = False):
     """
     Predict behavior from any independent variable (group) in the dataframe
 
@@ -116,19 +110,40 @@ def stats_for_SDT(sdt_df, IV, savetag):
     # fit a model for each behavioral variable (i.e., dependent variable)
     for bhv_var in bhv_vars:
         # quadratic
-        mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group", sdt_df.dropna(), 
-                        groups = sdt_df.dropna()["subject"]).fit()
-        mdf_Q.bic = bic(mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc)
-        mdf_Q.save(HLTP_pupil.MEG_pro_dir +
-                        '/results/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
-        #print(mdf_Q.summary())
+        sdt_df.group = zscore(sdt_df.group)
+        try:
+            mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group",
+                            sdt_df.dropna(), 
+                        groups = sdt_df.dropna()["subject"],
+                        re_formula = "~ np.power(group, 2) + group"
+                        ).fit(reml = _reml, method = 'Powell')
+            mdf_Q.save(HLTP_pupil.result_dir +
+                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
+        except:
+            mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group",
+                            sdt_df.dropna(),
+                        groups = sdt_df.dropna()["subject"],
+                        re_formula = "~ np.power(group, 2) + group" #keep only lin re
+                        ).fit(reml = _reml)
+            mdf_Q.save(HLTP_pupil.result_dir +
+                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
+
         # linear
-        mdf_L = smf.mixedlm(bhv_var + " ~ group", sdt_df.dropna(),
-                         groups = sdt_df.dropna()["subject"]).fit()
-        mdf_L.bic = bic(mdf_L.llf, mdf_L.nobs, mdf_L.df_modelwc)
-        mdf_L.save(HLTP_pupil.MEG_pro_dir +
-                         '/results/mixedlmL_' + IV + savetag + '_' + bhv_var
-                         +  '.pkl')
+        try:
+            mdf_L = smf.mixedlm(bhv_var + " ~ group", sdt_df.dropna(),
+                             groups = sdt_df.dropna()["subject"],
+                            re_formula =  "~ group").fit(reml = _reml, method = 'Powell')
+            mdf_L.save(HLTP_pupil.result_dir +
+                             '/mixedlmL_' + IV + savetag + '_' + bhv_var
+                             +  '.pkl')
+        except:
+            mdf_L = smf.mixedlm(bhv_var + " ~ group", sdt_df.dropna(),
+                                groups=sdt_df.dropna()["subject"],
+                            re_formula =  "~ group").fit(reml=_reml)
+            mdf_L.save(HLTP_pupil.result_dir +
+                       '/mixedlmL_' + IV + savetag + '_' + bhv_var
+                       + '.pkl')
+
         print('saving to ' + IV + savetag + '_' + bhv_var)
         print(mdf_L.summary())
           
@@ -154,11 +169,17 @@ def add_subject_residual_power(bhv_df):
             bhv_df[ DV + 'res'] = 0
             for subject in HLTP_pupil.subjects:                            
                 subj_df = bhv_df[bhv_df.subject == subject]
-                mdf_Q = smf.mixedlm(DV + " ~ np.power(pupil, 2) + pupil", 
-                        subj_df.dropna(), groups = subj_df.dropna()["subject"]
-                        ).fit(method='powell')
+                subj_df["constant"] = 1  
+                mdf_Q = smf.ols(DV + " ~ np.power(pupil, 2) + pupil + constant", 
+                        subj_df.dropna()).fit()
+                mdf_L = smf.ols(DV + " ~ pupil + constant",
+                        subj_df.dropna()).fit()
+                if mdf_Q.aic < mdf_L.aic:
+                    res_val = mdf_Q.resid.values
+                else:
+                    res_val = mdf_L.resid.values
                 bhv_df.loc[
-                    bhv_df.subject == subject,  DV + 'res'] = mdf_Q.resid.values
+                    bhv_df.subject == subject,  DV + 'res'] = res_val
     return bhv_df
         
 def correct_pvals_by_roi(savetag):
@@ -171,6 +192,27 @@ def correct_pvals_by_roi(savetag):
 
     """
     for bhv_var in bhv_vars:
+        table_par_e = np.zeros( (7, 5) ) + np.inf
+        table_pvals = np.ones( (7, 5) ) + np.inf
+        table_pvals_corr = np.ones( (7, 5) ) +  np.inf
+        for bi, band in enumerate(HLTP_pupil.freq_bands.keys()):
+            for roi in range(7):
+                IV =  band + str(roi)
+                save_name = IV + savetag + '_' + bhv_var
+                mdf_L = pd.read_pickle(
+                    HLTP_pupil.result_dir + '/mixedlmL_' + save_name
+                                +'.pkl')
+                if mdf_L.converged:
+                    table_par_e[roi, bi] = mdf_L.params[1]
+                    table_pvals[roi, bi] = mdf_L.pvalues[1]
+            table_pvals_corr[:, bi] = multipletests(table_pvals[:, bi], method = 'fdr_bh')[1]
+        #print(multipletests(roi_pval, method = 'fdr_bh')[1] < 0.05)
+        print(bhv_var, table_pvals < 0.05)
+        HLTP_pupil.save([table_par_e, table_pvals, table_pvals_corr], HLTP_pupil.result_dir +
+                        '/' + savetag + 'pe_pval_' + bhv_var +'.pkl')
+    #check the quadratic models
+    print("Quadratic p-vals")
+    for bhv_var in bhv_vars:
         table_par_e = np.zeros( (7, 5) )
         table_pvals = np.zeros( (7, 5) )
         for bi, band in enumerate(HLTP_pupil.freq_bands.keys()):
@@ -179,46 +221,81 @@ def correct_pvals_by_roi(savetag):
                 IV =  band + str(roi)
                 save_name = IV + savetag + '_' + bhv_var
                 mdf_L = pd.read_pickle(
-                    HLTP_pupil.MEG_pro_dir + '/results/mixedlmL_' + save_name
+                    HLTP_pupil.result_dir + '/mixedlmL_' + save_name
                                 +'.pkl')
+                mdf_Q = pd.read_pickle(
+                    HLTP_pupil.result_dir + '/mixedlmQ_' + save_name
+                                +'.pkl')
+                #print("Q-conv:", mdf_Q.converged, "L-conv:", mdf_L.converged)
+                if mdf_Q.aic < mdf_L.aic:
+                    print("Q is better")
+                    print("Q-conv:", mdf_Q.converged, "Sig:", mdf_Q.pvalues[1], " ", save_name)
+                    print("L-conv:", mdf_L.converged, "Sig:", mdf_L.pvalues[1], " ", save_name)
+                #else:
+                #    print("L is better")
                 table_par_e[roi, bi] = mdf_L.params[1]
                 roi_pval.append(mdf_L.pvalues[1])
             table_pvals[:, bi] = multipletests(roi_pval, method = 'fdr_bh')[1]
         print(bhv_var, table_pvals < 0.05)
-        HLTP_pupil.save([table_par_e, table_pvals], HLTP_pupil.MEG_pro_dir + 
-                        '/results/' + savetag + 'pe_pval_' + bhv_var +'.pkl')
-    return        
-            
+        HLTP_pupil.save([table_par_e, table_pvals], HLTP_pupil.result_dir +
+                        '/' + savetag + '_Q_pe_pval_' + bhv_var +'.pkl')
+    return
+
+def compare_L_and_Q_models(bhv_vars, IV = "pupil", savetag = ''):
+    for bhv_var in bhv_vars:
+        mdf_Q = HLTP_pupil.load(HLTP_pupil.result_dir +
+                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
+        mdf_L = HLTP_pupil.load(HLTP_pupil.result_dir +
+                        '/mixedlmL_' + IV + savetag + '_' + bhv_var +'.pkl')
+
+        LR = 2 * ( mdf_Q.llf - mdf_L.llf)
+        DOF_diff = mdf_Q.params.shape[0] - mdf_L.params.shape[0]
+        p = chi2.sf(LR, DOF_diff)
+        print(bhv_var + "pval:", p)
+
+
+
+
+
+bhv_vars = ['HR', 'FAR', 'c', 'd', 'p_corr', 'catRT', 'recRT']
+n_roi = 7
 # Run the functions
-df_name = 'all_subj_bhv_w_pupil_power'# dataframe with power 
-bhv_df = pd.read_pickle(HLTP_pupil.MEG_pro_dir +
-                          '/results/' + df_name + '.pkl')
+df_name = 'all_subj_bhv_df_w_pupil_power'# prepare this with 4_DICS_roi_analysis
+#df_name = 'all_subj_bhv_df_w_pupil'
+bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+                          '/' + df_name + '.pkl')
 
 # analysis of behavior according to prestimulus pupil size
-sdt_df = get_SDT_by_IV(bhv_df, IV = "pupil");  
-model_name = stats_for_SDT(sdt_df, IV = "pupil", savetag = '') 
-# analysis of behavior according to prestimulus residual pupil
-# TODO: combine with code in Independent_Pupil_to_Behavior
-
-# analysis of behavior according to prestimulus power
-for roi in range(n_roi):
-    for fband in HLTP_pupil.freq_bands.keys():
-        IV = fband + str(roi)
-        sdt_df = get_SDT_by_IV(bhv_df, IV)
-        stats_for_SDT(sdt_df, IV, savetag = '')
-
-correct_pvals_by_roi(savetag = '')
-
+sdt_df = get_SDT_by_IV(bhv_df, IV = "pupil")
+model_name = stats_for_SDT(sdt_df, IV = "pupil", savetag = '')
 
 # analysis of behavior according to prestimulus residual power
-bhv_df = add_subject_residual_power(bhv_df)
+df = pd.read_pickle(HLTP_pupil.result_dir +
+                    '/roi_pwr_and_pupiltask_prestim.pkl')
+df = add_subject_residual_power(df)
+#bhv_df = add_subject_residual_power(bhv_df)
 for roi in range(n_roi): 
     for fband in HLTP_pupil.freq_bands.keys():
         IV = fband + str(roi) + 'res'
+        bhv_df[IV] = df[IV]
         sdt_df = get_SDT_by_IV(bhv_df, IV)
-        stats_for_SDT(sdt_df, IV, savetag = '')
+        stats_for_SDT(sdt_df, IV, savetag = '', _reml = False)
 correct_pvals_by_roi(savetag = 'res')
-        
+
+# analysis of behavior according to prestimulus residual pupil - REMOVED
+#sdt_df = pd.read_pickle(HLTP_pupil.result_dir +
+#                         '/sdt_by_pupil_resid_df_3.pkl')
+
+#model_name = stats_for_SDT(sdt_df, IV = "pupil", savetag = 'res3_')
+
+# analysis of behavior according to prestimulus power - NOT USED
+#for roi in range(n_roi):
+#    for fband in HLTP_pupil.freq_bands.keys():
+#        IV = fband + str(roi)
+#        sdt_df = get_SDT_by_IV(bhv_df, IV)
+#        stats_for_SDT(sdt_df, IV, savetag = '')
+#correct_pvals_by_roi(savetag = '')
+
 # TODO: goto the place in code where I write th below df and fix its name 
 # until then combine the two dataframes:
 # df = pd.read_pickle(HLTP_pupil.MEG_pro_dir + 
