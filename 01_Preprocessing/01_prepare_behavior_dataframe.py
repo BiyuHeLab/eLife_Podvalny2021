@@ -12,14 +12,14 @@ step is needed to have a more convenient access to the behavioral data
 import numpy as np
 from scipy.io import loadmat
 import pandas as pd
-import HLTP
+import HLTP_pupil
 
 def PTmat_files_to_dict(subject):
     '''
     create a python dictionary from Psychtoolbox MATLAB files for each subject
     '''
     bhv_dict = {}
-    data_dir = HLTP.MEG_raw_dir + '/' + subject
+    data_dir = HLTP_pupil.MEG_raw_dir + '/' + subject
     bhv = loadmat(data_dir  + '/Behavior/bhv_data.mat')['bhv_data']
     matfields = ['seen', 'unseen', 'real_img']
     for m in matfields:
@@ -27,7 +27,8 @@ def PTmat_files_to_dict(subject):
     n = len(bhv_dict[m])    
     bhv_dict['cat_protocol'] = np.squeeze(bhv['cat_protocol'][0,0][0])[:n] 
     bhv_dict['cat_response'] = np.squeeze(bhv['cat_response'][0,0][0])[:n] 
-    
+    bhv_dict['catRT'] = np.squeeze(bhv['cat_RT'][0,0][0])[:n]
+    bhv_dict['recRT'] = np.squeeze(bhv['visexp_RT'][0,0][0])[:n]
     bhv = loadmat(data_dir +'/Behavior/datafile.mat')['data']
     bhv_dict['stimID'] = bhv['stimID'][0,0][0][:n] 
     bhv_dict['exemplar'] = [i.astype('str')[0] for i in 
@@ -36,29 +37,27 @@ def PTmat_files_to_dict(subject):
 
 def PTmat_quest_files_to_dict(subject):
     bhv_dict = {}
-    data_dir = HLTP.MEG_raw_dir + '/' + subject
+    data_dir = HLTP_pupil.MEG_raw_dir + '/' + subject
     bhv = loadmat(data_dir  + '/Behavior/bhv_dataQ.mat')['bhv_dataQ']
     bhv_dict['recognition'] = np.squeeze(bhv['seen'][0,0][0]).astype('int') - \
         np.squeeze(bhv['unseen'][0,0][0]).astype('int')
     bhv_dict['contrast'] = np.squeeze(bhv['contrast'][0,0][0]).astype('float')         
     return bhv_dict        
-        
-        
-        
+
 # place the dictionary in a data frame for each subject and remove bad blink 
 # trials
 df_list = []
 quest_df_list = []
-for subject in HLTP.subjects:
+for subject in HLTP_pupil.subjects:
     bhv_df = pd.DataFrame(PTmat_files_to_dict(subject))
     bhv_df['subject'] = subject    
     bhv_df['correct'] = bhv_df['cat_protocol'] == bhv_df['cat_response']
     try:
-        bad_trials = HLTP.load(HLTP.MEG_pro_dir + '/' + subject + '/bad_trials.p')
+        bad_trials = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/' + subject + '/bad_trials.p')
     except:
         print('\n Identify bad_trials based on blinks first. '
               '\n Use HLTP_eye_tracker.py script')
-        break;
+        break
 
     df_list.append(bhv_df)
     
@@ -68,10 +67,10 @@ for subject in HLTP.subjects:
     
 all_df = pd.concat(df_list)
 all_df['recognition'] = 1*all_df['seen'] - 1*all_df['unseen']
-all_df.to_pickle(HLTP.MEG_pro_dir +'/results/all_subj_bhv_df.pkl')
+all_df.to_pickle(HLTP_pupil.result_dir +'/all_subj_bhv_df.pkl')
 
-all_df = pd.concat(quest_df_list)
-all_df.to_pickle(HLTP.MEG_pro_dir +'/results/all_quest_df.pkl')
+#all_df = pd.concat(quest_df_list)
+#all_df.to_pickle(HLTP_pupil.MEG_pro_dir +'/results/all_quest_df.pkl')
 
 
 
