@@ -118,7 +118,7 @@ def stats_for_SDT(sdt_df, IV, savetag = '', _reml = False):
                         re_formula = "~ np.power(group, 2) + group"
                         ).fit(reml = _reml, method = 'Powell')
             mdf_Q.save(HLTP_pupil.result_dir +
-                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
+                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var + '.pkl')
         except:
             mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group",
                             sdt_df.dropna(),
@@ -253,9 +253,38 @@ def compare_L_and_Q_models(bhv_vars, IV = "pupil", savetag = ''):
         p = chi2.sf(LR, DOF_diff)
         print(bhv_var + "pval:", p)
 
+def test_blink_effects_on_SDT():
+    df_name = 'all_subj_bhv_df_w_pupil_power'  # prepare this with 4_DICS_roi_analysis
+    # df_name = 'all_subj_bhv_df_w_pupil'
+    bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+                            '/' + df_name + '.pkl')
+    dfs = []
+    for subject in HLTP_pupil.subjects:
+        # load the array indicating whether there has occurred at least one blink
+        # during a pre-stimulus interval
+        blinks = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir
+                       + '/' + subject +  '/blinks_for_prestim_epochs.pkl')
+        for blink in [True, False]:
+            HR, FAR, d, c, p_correct, catRT, recRT = sdt_from_df(
+                bhv_df[bhv_df.subject == subject].loc[blinks == blink])
+            df = pd.DataFrame({"subject": subject, "blink":blink,
+                                 "HR":[HR], "FAR":[FAR], "d":[d], "c":[c],
+                                 "p_correct":[p_correct], "catRT":[catRT] })
+            dfs.append(df)
+    adf = pd.concat(dfs)
 
-
-
+def check_bic_of_res_power_models():
+    for bhv_var in bhv_vars:
+        for roi in range(n_roi):
+            for fband in HLTP_pupil.freq_bands.keys():
+                bhv_var
+                IV = fband + str(roi) + 'res'
+                mdf_Q = HLTP_pupil.load(HLTP_pupil.result_dir +
+                            '/mixedlmQ_' + IV  + '_' + bhv_var + '.pkl')
+                mdf_L = HLTP_pupil.load(HLTP_pupil.result_dir +
+                            '/mixedlmL_' + IV  + '_' + bhv_var + '.pkl')
+                if mdf_Q.bic < mdf_L.bic:
+                    print(bhv_var, str(roi), fband, mdf_Q.params[1], mdf_Q.pvalues[1])
 
 bhv_vars = ['HR', 'FAR', 'c', 'd', 'p_corr', 'catRT', 'recRT']
 n_roi = 7
@@ -281,6 +310,8 @@ for roi in range(n_roi):
         sdt_df = get_SDT_by_IV(bhv_df, IV)
         stats_for_SDT(sdt_df, IV, savetag = '', _reml = False)
 correct_pvals_by_roi(savetag = 'res')
+
+
 
 # analysis of behavior according to prestimulus residual pupil - REMOVED
 #sdt_df = pd.read_pickle(HLTP_pupil.result_dir +
