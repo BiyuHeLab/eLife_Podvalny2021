@@ -15,8 +15,8 @@ import scipy.stats
 from scipy.stats import sem
 import pandas as pd
 
-bhv_df = pd.read_pickle(MEG_pro_dir + '/results/all_subj_bhv_df.pkl')
-group_percentile = np.arange(0., 100., 20);
+bhv_df = pd.read_pickle(HLTP_pupil.result_dir + '/all_subj_bhv_df.pkl')
+group_percentile = np.arange(0., 100., 20)
 
 p_group = []; pupil_epochs = []; mean_pup = []
 for s, subject in enumerate(subjects):

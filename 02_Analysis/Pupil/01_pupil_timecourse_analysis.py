@@ -149,7 +149,9 @@ def test_effect_of_blinks_on_pupil_size():
     ''' is there a diffrence in pupil size of pieces of data with or without blinks?'''
     blink_pupil = []; no_blink_pupil = []
     dfs = []
-    for subject in HLTP_pupil.subjects:  
+    for subject in HLTP_pupil.subjects:
+        # load the array indicating whether there has occurred at least one blink
+        # during a prestimulus interval
         blinks = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir
                        + '/' + subject +  '/blinks_for_prestim_epochs.pkl')
         pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + 
