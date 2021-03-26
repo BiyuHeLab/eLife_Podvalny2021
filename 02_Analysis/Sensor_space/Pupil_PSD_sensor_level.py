@@ -70,6 +70,7 @@ def fitLM_PSD_w_pupil():
                                     " ~ np.power(pupil, 2) + pupil", 
                             df.dropna(), groups = df.dropna()["subject"]
                             ).fit(method='powell')
+                
                 res[fband + 'inter'][chan] = mdf_Q.params[0].copy();
                 res[fband + 'Q'][chan] = mdf_Q.params[1].copy();
                 res[fband + 'L'][chan] = mdf_Q.params[2].copy();
@@ -122,8 +123,8 @@ def save_sensor_PSD_by_pupil(res):
 
 def update_bhv_df_w_PSD():
     #---- prepare behavioral data frame with updated power bin---------------------
-    bhv_df = pd.read_pickle(HLTP_pupil.MEG_pro_dir + 
-                            '/results/all_subj_bhv_df.pkl')
+    bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+                            '/all_subj_bhv_df.pkl')
     # add column for each frequency band:
     for band, _ in HLTP_pupil.freq_bands.items():
         bhv_df[band] = np.NaN   
@@ -152,8 +153,8 @@ def update_bhv_df_w_PSD():
             band_pwr = psd[:, :, (freq > frange[0]) & (freq <= frange[1])
                 ].mean(axis = -1).mean(axis = -1)#[:, mask]
             bhv_df.loc[bhv_df.subject == subject, band ] = band_pwr
-    bhv_df.to_pickle(HLTP_pupil.MEG_pro_dir +
-                         '/results/all_subj_bhv_df_w_sensor_pwr.pkl')
+    bhv_df.to_pickle(HLTP_pupil.result_dir +
+                         '/all_subj_bhv_df_w_sensor_pwr.pkl')
 def prep_rest_df_w_PSD():
     #---- prepare resting data frame with updated power bin---------------------
     dfs = []
@@ -182,8 +183,8 @@ def prep_rest_df_w_PSD():
                     ].mean(axis = -1)[:, mask].mean(axis = -1)
                 df[band] = band_pwr
             dfs.append(df)    
-    pd.concat(dfs).to_pickle(HLTP_pupil.MEG_pro_dir +
-                         '/results/all_subj_rest_df_w_sensor_pwr.pkl')    
+    pd.concat(dfs).to_pickle(HLTP_pupil.result_dir +
+                         '/all_subj_rest_df_w_sensor_pwr.pkl')
 
 def combine_rest_runs(res):
     ''' combine two rest runs '''
@@ -221,19 +222,19 @@ def fitLM_pupil_group_power(res):
         mdf_Q = smf.mixedlm("power ~ np.power(pupil, 2) + pupil", 
                     df.dropna(), groups = df.dropna()["subject"]).fit(method='powell')
         mdf_Q.bic = bic(mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc)
-        mdf_Q.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmQ_pupil_' 
+        mdf_Q.save(HLTP_pupil.result_dir + '/mixedlmQ_pupil_'
                        + fband + str(res) +'.pkl')
         mdf_L = smf.mixedlm("power ~ pupil", 
                     df.dropna(), groups = df.dropna()["subject"]).fit(
                             method='powell')
         mdf_L.bic = bic(mdf_L.llf, mdf_L.nobs, mdf_L.df_modelwc)
-        mdf_L.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmL_pupil_' 
+        mdf_L.save(HLTP_pupil.result_dir + '/mixedlmL_pupil_'
                        + fband + str(res) +'.pkl')
         print(fband, mdf_Q.pvalues, mdf_L.pvalues)
         
 def fitLM_pupil_power_bhv():
-    bhv_df = pd.read_pickle(HLTP_pupil.MEG_pro_dir +
-                         '/results/all_subj_bhv_df_w_sensor_pwr.pkl')
+    bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+                         '/all_subj_bhv_df_w_sensor_pwr.pkl')
     b = 'task_prestim'
     for fband, frange in HLTP_pupil.freq_bands.items():
         dfs = []
@@ -250,32 +251,32 @@ def fitLM_pupil_power_bhv():
         mdf_Q = smf.mixedlm("power ~ np.power(pupil, 2) + pupil", 
                         df.dropna(), groups = df.dropna()["subject"]).fit(method='powell')
         mdf_Q.bic = bic(mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc)
-        mdf_Q.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmQ_full_pupil_bhv_' 
+        mdf_Q.save(HLTP_pupil.result_dir + '/mixedlmQ_full_pupil_bhv_'
                            + fband +'.pkl')
         mdf_L = smf.mixedlm("power ~ pupil", 
                         df.dropna(), groups = df.dropna()["subject"]).fit(
                                 method='powell')
         mdf_L.bic = bic(mdf_L.llf, mdf_L.nobs, mdf_L.df_modelwc)
-        mdf_L.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmL_full_pupil_bhv_' 
+        mdf_L.save(HLTP_pupil.result_dir + '/mixedlmL_full_pupil_bhv_'
                            + fband +'.pkl') 
         print(fband, mdf_Q.pvalues, mdf_L.pvalues)
         
 def fitLM_pupil_power_rest():
-    df = pd.read_pickle(HLTP_pupil.MEG_pro_dir +
-                         '/results/all_subj_rest_df_w_sensor_pwr.pkl')        
+    df = pd.read_pickle(HLTP_pupil.result_dir +
+                         '/all_subj_rest_df_w_sensor_pwr.pkl')
 
     for fband, frange in HLTP_pupil.freq_bands.items():
         df["power"] = zscore(np.log(df[fband]))
         mdf_Q = smf.mixedlm("power ~ np.power(pupil, 2) + pupil", 
                         df.dropna(), groups = df.dropna()["subject"]).fit(method='powell')
         mdf_Q.bic = bic(mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc)
-        mdf_Q.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmQ_full_pupil_rest_' 
+        mdf_Q.save(HLTP_pupil.result_dir + '/mixedlmQ_full_pupil_rest_'
                            + fband +'.pkl')
         mdf_L = smf.mixedlm("power ~ pupil", 
                         df.dropna(), groups = df.dropna()["subject"]).fit(
                                 method='powell')
         mdf_L.bic = bic(mdf_L.llf, mdf_L.nobs, mdf_L.df_modelwc)
-        mdf_L.save(HLTP_pupil.MEG_pro_dir + '/results/mixedlmL_full_pupil_rest_' 
+        mdf_L.save(HLTP_pupil.result_dir + '/mixedlmL_full_pupil_rest_'
                            + fband +'.pkl') 
         print(fband, mdf_Q.pvalues, mdf_L.pvalues)
         
