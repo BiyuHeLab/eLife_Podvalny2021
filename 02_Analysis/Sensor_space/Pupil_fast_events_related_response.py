@@ -49,7 +49,7 @@ def analyse_events(subject, block, filt_pupil, fs):
 
 def get_pupil_events(block, subject):
     # Create the filter for pupil
-    filter_order = 2; 
+    filter_order = 2
     frequency_cutoff = 5
     sampling_frequency = HLTP_pupil.raw_fs
     b, a = butter(filter_order, frequency_cutoff, 
@@ -114,74 +114,8 @@ def combine_rest_blocks_evo():
      HLTP_pupil.save(evo1, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
                                 '/evoked_by_pupil_event_rest.pkl')
 
-def plot_evoked_example():
-    evo = HLTP_pupil.load( HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                                '/evoked_by_pupil_event_rest.pkl')
-    evo = pd.read_pickle( '/isilon/LFMI/VMdrive/Ella/HLTP_MEG/proc_data/pupil_result' +
-                                '/evoked_by_pupil_event_rest.pkl')
-    eid = 'slow_dil'
-    times = evo[eid + 'AA'].times
-
-    for chn in [189, 59]:#range(35, 70):##range(30):    
-
-        fig, ax = plt.subplots(1, 1, figsize = (2., 2.8))
-        plt.plot([0, 0], [-30, 30], 'k--')
-        plt.plot([-1, 1], [0, 0], 'k--')
-        clr = {'dil':'r', 'con':'c'}
-        for evnt in ['dil', 'con']:
-            data_to_plot = [(evo['slow_' + evnt + s].data
-                             + evo['fast_' + evnt + s].data) / 2. / 1e-15
-                        for s in subjects]
-            m_dil = np.mean(data_to_plot, axis = 0)[chn, :]
-            e_dil = np.std(data_to_plot, axis = 0)[chn, :] / np.sqrt(24)
-            ax.fill_between(times, m_dil + e_dil, m_dil - e_dil, color = clr[evnt],
-                            alpha = 0.5, edgecolor='none', linewidth=0)
-
-        plt.xlabel('Time (s)');plt.ylabel('MEG (fT)')
-        ax.spines['left'].set_position(('outward', 10))
-        ax.yaxis.set_ticks_position('left')
-        ax.spines['bottom'].set_position(('outward', 15))
-        ax.xaxis.set_ticks_position('bottom')
-        plt.xlim([-1, 1]);plt.ylim([-30, 30])
-        fig.savefig(figures_dir + '/DvsC_chan_example_' + str(chn)+ 
-                    '.png', dpi = 800, bbox_inches = 'tight', transparent = True)
-     
-        for eid in ['slow_con', 'fast_con', 'slow_dil', 'fast_dil']:
-            m = np.mean([evo[eid + s].data for s in subjects], axis = 0)[chn, :]
-            plt.plot(evo[eid + 'AA'].times, m, '--', linewidth = 2., 
-                         alpha = .5)
-        plt.plot([0, 0], [-3e-14, 3e-14], ':', color = 'gray')
-
-def plot_peak_time_distriution():
-'''plot distribution of time lags'''
-        for evnt in ['dil', 'con']:
-            data_to_plot = [(evo['slow_' + evnt + s].data
-                             + evo['fast_' + evnt + s].data) / 2. 
-                        for s in subjects]
-            m_dil = np.mean(data_to_plot, axis = 0)
-            peak_lag = np.argmax(np.abs(m_dil), axis = 1)
-            time_lag = np.array([times[pl] for pl in peak_lag] )
-            fig, ax = plt.subplots(1, 1, figsize = (1.5,1.5))
-
-            plt.hist(time_lag, 20)
-
-def plot_topos_time(times, samp_evo, mask, savetag):
-    mparam = dict(marker = '.', markerfacecolor = 'k', markeredgecolor = 'k',
-                    linewidth = 0, markersize = 3)  
-    
-    fig, axes = plt.subplots(1, len(times))
-    fig.set_size_inches(12, 6)
-    samp_evo.plot_topomap(times, contours = 0, vmin = -1e16, vmax = 1e16,
-                          mask_params = mparam, cmap = 'RdYlBu_r', axes = axes,
-                          colorbar = False, outlines = 'head', mask = mask.T, 
-                          sensors = False)
-    plt.subplots_adjust(wspace = 0, hspace =0)
-    fig.show()
-    fig.savefig(figures_dir + '/pupil_event_related_topo' + savetag + 
-                    '.png', dpi = 800, bbox_inches = 'tight', transparent = True)
-     
 def spatiotemp_perm_test(dd, samp_evo):
-    connectivity, pos = HLTP_pupil.get_connectivity()   
+    connectivity, pos = HLTP_pupil.get_connectivity()
     alpha = 0.05; p_accept = 0.05
     threshold = -distributions.t.ppf( alpha / 2., len(HLTP_pupil.subjects) - 1)
     cluster_stats = mne.stats.spatio_temporal_cluster_1samp_test(
@@ -202,35 +136,6 @@ def spatiotemp_perm_test(dd, samp_evo):
             mask[times, sensors.astype(int)] = True
            
     return samp_evo, mask
-    
-def plot_topos(): 
-        
-    for  evnt in ['dil',  'con']:
-        dd = np.array([(evo['slow_' + evnt + s].data + 
-                        evo['fast_' + evnt + s].data) / 2. 
-                            for s in HLTP_pupil.subjects])
-    
-        template_evo = evo['slow_conAA'].copy()
-        samp_evo, mask = spatiotemp_perm_test(dd, template_evo)
-        
-        times = np.arange(-0.8, 1, 0.2); savetag = 'all' + evnt
-        plot_topos_time(times, samp_evo, mask, savetag)
-        times = np.arange(0.1, 1., 0.1); savetag = 'post' + evnt
-        plot_topos_time(times, samp_evo, mask, savetag)
-        
-    for  evnt in ['dil',  'con']:
-        for speed in ['slow', 'fast']:
-            dd = np.array([evo[speed + '_' + evnt + s].data  
-                                for s in HLTP_pupil.subjects])
-        
-            template_evo = evo['slow_conAA'].copy()
-            samp_evo, mask = spatiotemp_perm_test(dd, template_evo)
-            
-            times = np.arange(-1, .01, 0.1); savetag = 'pre' + speed + evnt
-            plot_topos_time(times, samp_evo, mask, savetag)
-            times = np.arange(0.1, 1., 0.1); savetag = 'post' + speed + evnt
-            plot_topos_time(times, samp_evo, mask, savetag)
-    
 
     
     
