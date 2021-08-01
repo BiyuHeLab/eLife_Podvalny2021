@@ -17,6 +17,10 @@ from scipy.stats.distributions import chi2
 import pandas as pd
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
+from rpy2.robjects.packages import importr
+from pymer4.models import Lmer
+performance = importr('performance')
+piecewiseSEM = importr('piecewiseSEM')
 
 def sdt_from_df(df):
     n_rec_real = sum(df[df.real_img == True].recognition == 1)
@@ -111,21 +115,29 @@ def stats_for_SDT(sdt_df, IV, savetag = '', _reml = False):
     for bhv_var in bhv_vars:
         # quadratic
         sdt_df.group = zscore(sdt_df.group)
+        sdt_df['group_sqr'] = np.power(sdt_df.group, 2)
         try:
             mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group",
                             sdt_df.dropna(), 
                         groups = sdt_df.dropna()["subject"],
                         re_formula = "~ np.power(group, 2) + group"
                         ).fit(reml = _reml, method = 'Powell')
-            mdf_Q.save(HLTP_pupil.result_dir +
-                        '/mixedlmQ_' + IV + savetag + '_' + bhv_var + '.pkl')
-        except:
+
+        except: # default fit method
             mdf_Q = smf.mixedlm(bhv_var + " ~ np.power(group, 2) + group",
                             sdt_df.dropna(),
                         groups = sdt_df.dropna()["subject"],
                         re_formula = "~ np.power(group, 2) + group" #keep only lin re
                         ).fit(reml = _reml)
-            mdf_Q.save(HLTP_pupil.result_dir +
+
+        model = Lmer(bhv_var + ' ~ 1 + group_sqr + group + (1 + group_sqr + group|subject)',
+                     data=sdt_df.dropna())
+        model.fit(REML=False, method='Powell')
+
+        r2 = piecewiseSEM.rsquared(model.model_obj)
+        mdf_Q.marginal_r2 = r2.Marginal[0]
+        mdf_Q.conditional_r2 = r2.Conditional[0]
+        mdf_Q.save(HLTP_pupil.result_dir +
                         '/mixedlmQ_' + IV + savetag + '_' + bhv_var +'.pkl')
 
         # linear
@@ -133,18 +145,25 @@ def stats_for_SDT(sdt_df, IV, savetag = '', _reml = False):
             mdf_L = smf.mixedlm(bhv_var + " ~ group", sdt_df.dropna(),
                              groups = sdt_df.dropna()["subject"],
                             re_formula =  "~ group").fit(reml = _reml, method = 'Powell')
-            mdf_L.save(HLTP_pupil.result_dir +
-                             '/mixedlmL_' + IV + savetag + '_' + bhv_var
-                             +  '.pkl')
-        except:
+
+        except: # go to default fit method
             mdf_L = smf.mixedlm(bhv_var + " ~ group", sdt_df.dropna(),
                                 groups=sdt_df.dropna()["subject"],
                             re_formula =  "~ group").fit(reml=_reml)
-            mdf_L.save(HLTP_pupil.result_dir +
+
+        model = Lmer(bhv_var + ' ~ 1 + group + (1 + group|subject)',
+                     data=sdt_df.dropna())
+        model.fit(REML=False, method='Powell')
+
+        r2 = piecewiseSEM.rsquared(model.model_obj)
+        mdf_L.marginal_r2 = r2.Marginal[0]
+        mdf_L.conditional_r2 = r2.Conditional[0]
+        mdf_L.save(HLTP_pupil.result_dir +
+                   '/mixedlmL_' + IV + savetag + '_' + bhv_var
+                   + '.pkl')
+        print('saving to ' + HLTP_pupil.result_dir +
                        '/mixedlmL_' + IV + savetag + '_' + bhv_var
                        + '.pkl')
-
-        print('saving to ' + IV + savetag + '_' + bhv_var)
         print(mdf_L.summary())
           
 def add_subject_residual_power(bhv_df):
