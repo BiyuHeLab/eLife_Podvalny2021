@@ -9,6 +9,7 @@ How object category representation changes with pre-stimulus pupil and time
 import HLTP_pupil
 from HLTP_pupil import MEG_pro_dir, subjects
 import numpy as np
+from statsmodels.stats.multitest import multipletests
 
 import pandas as pd
 import mne
@@ -22,10 +23,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import LeaveOneOut
 from statsmodels.stats.anova import AnovaRM
 
-
 #bhv_df = pd.read_pickle(MEG_pro_dir + '/results/all_subj_bhv.pkl')
-bhv_df = pd.read_pickle(MEG_pro_dir + 
-                        '/results/all_subj_bhv_w_pupil_power.pkl')
+#bhv_df = pd.read_pickle(HLTP_pupil.result_dir +
+#                        '/all_subj_bhv_w_pupil_power.pkl')
+df_name = 'all_subj_bhv_df_w_pupil_power'# prepare this with 4_DICS_roi_analysis
+#df_name = 'all_subj_bhv_df_w_pupil'
+bhv_df = pd.read_pickle(HLTP_pupil.result_dir + '/' + df_name + '.pkl')
+
 group_percentile = np.arange(0., 100., 20)
 
 mean_meg = []
@@ -37,7 +41,6 @@ for s, subject in enumerate(subjects):
     epochs = mne.read_epochs(epoch_fname, preload = True)
     #epochs.apply_baseline(baseline = (0, .05))
     epochs.resample(10, n_jobs = 10)
-
     picks = mne.pick_types(epochs.info, meg = True, 
                            ref_meg = False, exclude = 'bads')
     MEG_data = epochs.get_data(picks)
@@ -53,32 +56,62 @@ clf = make_pipeline(StandardScaler(),
                                        multi_class ='multinomial'))
 time_decod = SlidingEstimator(clf, n_jobs=1, verbose=True)
 cv = LeaveOneOut()
-
+K = 500
 scores = np.zeros( (5, n_times, n_subj) ); scores[:] = np.nan
+perm_scores = np.zeros( (5, n_times, n_subj, K) ); perm_scores[:] = np.nan
 
-for s, subject in enumerate(subjects): 
+for s, subject in enumerate(subjects):
     MEG_data = mean_meg[s]# n_trials x n_channels x n_times        
     cat = bhv_df[bhv_df.subject == subject].cat_protocol.values   
     rim = bhv_df[bhv_df.subject == subject].real_img
     
-    p_group = bhv_df[bhv_df.subject == subject].pupil_size_pre.values
+    p_group = bhv_df[bhv_df.subject == subject].pupil.values
     
     for grp in range(1, 6):    
           
         trials = np.where( (p_group == grp) & rim)[0]
-        X = MEG_data[trials, :, :]; y = cat[trials]
+        X = MEG_data[trials, :, :]
+        y = cat[trials]
         if len(np.unique(y)) > 2:
             score = cross_val_multiscore(time_decod, X, y, 
                                          cv = cv, n_jobs = 10)
             scores[grp - 1, :, s] = score.mean(axis = 0)
-HLTP_pupil.save(scores, HLTP_pupil.MEG_pro_dir + 
-                        '/results/cat_decod_score.pkl')  
+            #perm_test
+            for k in range(K):
+                perm_score = cross_val_multiscore(time_decod, X, np.random.permutation(y),
+                                         cv = cv, n_jobs = 10)
+                perm_scores[grp - 1, :, s, k] = perm_score.mean(axis = 0)
+
+
+
+HLTP_pupil.save([scores, perm_scores], HLTP_pupil.result_dir +
+                        '/cat_decod_score.pkl')
+
+plt.plot(perm_scores.mean(axis = 0).mean(axis = -1).mean(axis = -1).T);plt.plot(scores.mean(axis = 0).mean(axis = -1).T)
+
+plt.plot(perm_scores.mean(axis = -1).mean(axis = -1).T);plt.plot(scores.mean(axis = -1).T)
+# test whether they exceed chance level for each time point
+p_val = np.ones(20)
+mean_perm_score = perm_scores.mean(axis = 0).mean(axis = 1)
+mean_score = scores.mean(axis = 0).mean(axis = -1)
+for t in range(20):
+    p_val[t] = (mean_perm_score[t,:] > mean_score[t]).sum() / K
+corr_pval = multipletests(p_val, alpha=0.05, method='fdr_bh')
+
+# test whether they exceed chance level for each group
+p_val = np.ones(5)
+mean_perm_score = perm_scores.mean(axis = 1).mean(axis = 1)
+mean_score = scores.mean(axis = 1).mean(axis = -1)
+for t in range(5):
+    p_val[t] = (mean_perm_score[t,:] > mean_score[t]).sum() / K
+corr_pval = multipletests(p_val, alpha=0.05, method='fdr_bh')
+
 
 
 # test the effect of prestim pupil and time on devolepemnt of category representations
 
-scores = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir +
-                        '/results/cat_decod_score.pkl')
+scores = HLTP_pupil.load(HLTP_pupil.result_dir +
+                        '/cat_decod_score.pkl')
 sub= []; pup = []; tim = []; scr = []
 for s in range(24):
     for p in range(5):
