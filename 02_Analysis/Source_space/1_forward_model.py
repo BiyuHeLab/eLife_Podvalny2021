@@ -33,8 +33,8 @@ for subject in subjects:
 # for subjects with bad or without MRI    
 subjects = HLTP_pupil.mri_subj['bad'] + HLTP_pupil.mri_subj['no']
 template_subj = 'AL'
-# I use ALs brain as a template, which looks close enough to fsave
-# couldn't find fsave in right format and decided not to bother with conversion
+# I use ALs brain as a template, which looks close enough to fsaverage
+# couldn't find fsaverage in right format / figure out the conversion / don't think it matters
 for subject in subjects:
     src = mne.setup_source_space(template_subj, spacing = 'oct6', 
                      subjects_dir = MRI_dir, add_dist = False, n_jobs = -1)
@@ -46,7 +46,7 @@ for subject in subjects:
     bem = mne.make_bem_solution(model)
     mne.write_bem_solution(MEG_pro_dir + '/' + subject + '/bem-sol.fif', bem)
 
-# for the two subjects withouit mri I just copied template trans file 
+# for the two subjects without mri I just copied template trans file
 # in their directory, I used the actual trans files for bad mri subjects
     
 # COMPUTE FORWARD SOLUTION for HLTP
@@ -62,7 +62,7 @@ for subject in subjects:
     epochs = mne.read_epochs(MEG_pro_dir + '/' + subject + '/' + epoch_name + 
                              '-epo.fif')
     # Note that epochs file is used only for info about general recording 
-    # paramters, such as channels, dev_head_t, nothing of the epochs content 
+    # parameters, such as channels, dev_head_t, nothing of the epochs content
     src = mne.read_source_spaces(src_fname)
     bem = mne.read_bem_solution(bem_fname)
     fwd = mne.make_forward_solution(epochs.info, trans = trans_fname, 
@@ -72,3 +72,8 @@ for subject in subjects:
                                fwd, overwrite = True)
 
     
+# Plot visualization of forward solution / make sure worked
+for subject in HLTP_pupil.mri_subj['good']:
+    mne.viz.plot_bem(subject=subject, subjects_dir=MRI_dir, slices = 90,
+                 brain_surfaces='white', orientation='coronal')
+
