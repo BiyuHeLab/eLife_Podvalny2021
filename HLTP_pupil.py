@@ -26,7 +26,7 @@ result_dir = MEG_pro_dir + '/pupil_result'
 FS_dir = MEG_pro_dir + '/freesurfer'
 
 subjects = ['AA', 'AC', 'AL', 'AR', 'AW', 'BJB', 'CW', 'DJ', 
-            'EC', 'FSM','JA', 'JC', 'JP', 'JS', 'LS', 'MC', 
+            'EC', 'FSM', 'JA', 'JC', 'JP', 'JS', 'LS', 'MC',
             'NA', 'NC', 'NM', 'SF', 'SL', 'SM', 'TL', 'TK']
 
 mri_subj = {'good':['AA', 'AC', 'AL', 'AR', 'BJB', 'CW', 'DJ', 'EC', 'FSM','JA',
@@ -121,11 +121,11 @@ def get_experimental_details(subj_raw_dir):
     subj_code = details['subj_code'][0,0][0]     
     subj_meg_dir = subj_raw_dir + 'MEG/' + subj_code  
      
-    raw_filenames = [];
+    raw_filenames = []
     for b in range(0, filenames.shape[1]):   
         raw_filenames.append(subj_meg_dir + filenames[0, b][0] + '.ds')        
     rest_run1 = subj_meg_dir + '_rest_' + date + '_01.ds'
-    raw_filenames.append(rest_run1);
+    raw_filenames.append(rest_run1)
     rest_run2 = subj_meg_dir + '_rest_' + date + '_02.ds' 
     if os.path.exists(rest_run2):     
         raw_filenames.append(rest_run2)
