@@ -3,8 +3,8 @@
 """
 Created on Tue Feb 19 17:27:25 2019
 
-In this script I use DICS to localize MEG activity at diffrent frequency 
-bands accoridng to pupil size. 
+In this script I use DICS to localize MEG activity at different frequency
+bands according to pupil size.
 
 @author: podvae01
 """
@@ -15,6 +15,8 @@ from mne.beamformer import make_dics, apply_dics_csd
 import numpy as np        
 from os import path         
 from HLTP_pupil import subjects, freq_bands, MEG_pro_dir, FS_dir
+from joblib import Parallel, delayed
+import multiprocessing
 
 # FUNCTIONS
 def get_epochs_and_pupil(sub_pro_dir, b):
@@ -25,7 +27,8 @@ def get_epochs_and_pupil(sub_pro_dir, b):
     
     epochs = mne.read_epochs(epoch_fname, preload = False )
     # this step loads detrended epochs -> better for CSD
-    epochs.detrend = 1; epochs.load_data()     
+    epochs.detrend = 1
+    epochs.load_data()
     
     pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + '/pupil_states_' + 
                             b + subject + '.pkl')
@@ -38,39 +41,46 @@ def get_epochs_and_pupil(sub_pro_dir, b):
         epochs.interpolate_bads(reset_bads = False)
     
     return epochs
-# DEFINITIONS
+
+def calculate_csd(subject):
+    sub_pro_dir = MEG_pro_dir + '/' + subject
+
+    epochs = get_epochs_and_pupil(sub_pro_dir, epoch_name)
+    if not (type(epochs) == mne.epochs.EpochsFIF):  return 1
+
+    # localize the sources of each frequency for each pupil group
+    for evnt, _ in epochs.event_id.items():
+        # we compute the csd matrix for each epoch in the group
+        # (the reason for grouping is only convenience for later use)
+        csd = csd_multitaper(epochs[evnt], fmin=1, fmax=100,
+                             tmin=epochs[evnt].tmin, tmax=epochs[evnt].tmax,
+                             adaptive=True, n_jobs=10)
+        csd.save(sub_pro_dir + '/' + method + '_csd_multitaper_' +
+                 epoch_name + evnt)
+    return 0
+
 method = 'dics'
 #------------------------------------------------------------------------------
-# calculate the CSD matrices - this is computationally consuming...
+# calculate the CSD matrices
 #------------------------------------------------------------------------------
+num_cores = multiprocessing.cpu_count()
 for epoch_name in ['rest01', 'rest02', 'task_prestim']:
-    for subject in subjects:
-        sub_pro_dir = MEG_pro_dir + '/' + subject
+    Parallel(n_jobs = num_cores)(delayed(calculate_csd)(subject)
+                             for subject in subjects)
 
-        epochs = get_epochs_and_pupil(sub_pro_dir, epoch_name)
-        if not (type(epochs) == mne.epochs.EpochsFIF):  continue
-
-        # localize the sources of each frequency for each pupil group
-        for evnt, _ in epochs.event_id.items():
-            # we compute the csd matrix for each epoch in the group
-            csd = csd_multitaper(epochs[evnt], fmin = 1, fmax = 100,
-                      tmin = epochs[evnt].tmin, tmax = epochs[evnt].tmax, 
-                      adaptive = True, n_jobs = 10)
-            csd.save(sub_pro_dir + '/' + method + '_csd_multitaper_'  + 
-                     epoch_name + evnt)
 
 #------------------------------------------------------------------------------
 # calculate spatial filters w DICS for each freq range
 #------------------------------------------------------------------------------
 fmin = [freq_bands[f][0] for f in freq_bands]
 fmax = [freq_bands[f][1] for f in freq_bands]
-
 for epoch_name in ['rest01_ds', 'rest02_ds', 'task_prestim_ds']:
     for subject in subjects:
         sub_pro_dir = MEG_pro_dir + '/' + subject
         epoch_file = sub_pro_dir + '/' + epoch_name + '-epo.fif'
         if not path.exists(epoch_file): print('No such file'); continue
-    
+        epochs = get_epochs_and_pupil(sub_pro_dir, epoch_name)
+
         info = mne.io.read_info(sub_pro_dir + '/' + epoch_name + '-epo.fif')
         fwd = mne.read_forward_solution(sub_pro_dir + '/HLTP_fwd.fif')
         # read the csd for each event and average csds:
