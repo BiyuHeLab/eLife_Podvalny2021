@@ -8,36 +8,44 @@ of spectral power
 
 @author: podvae01
 """
+
 import pandas as pd
 import HLTP_pupil
-from statsmodels.tools.eval_measures import bic, aic
 
 n_rois = 7
 kwords = ['exp', 'fband', 'roi', 'Q_pe', 'Q_pval', 'Q_std', 
-          'L_pe', 'L_pval', 'L_std', 'aic', 'bic']
+          'L_pe', 'L_pval', 'L_std', 'L_bic', 'Q_bic', 'L_marg_r2', 'Q_marg_r2', 'L_cond_r2', 'Q_cond_r2']
 all_df = []
+idx = 0
+RSNs = ['Vis','SM','DAN','VAN','Lim','FPN', 'DMN']
 for b in ['task_prestim', 'rest']:
+    res = pd.read_pickle(HLTP_pupil.result_dir + '/LM_betas_full_random_' + b + '.pkl')
+
     for fband in HLTP_pupil.freq_bands.keys():
         for roi in range(n_rois):
-            mdf_Q = pd.read_pickle(HLTP_pupil.result_dir + '/LM_stats_'
-                                   + str(roi) + fband + b + '.pkl')
-
+            idx += 1
             LM_res_dict = { i : [] for i in kwords }
+            #LM_res_dict['index']    = idx
             LM_res_dict['exp']    = b
             LM_res_dict['fband']  = fband
-            LM_res_dict['roi']    = [roi]
-            LM_res_dict['Q_pe']   = "{:.2e}".format(mdf_Q.params[1])
-            LM_res_dict['Q_pval'] = "{:.2e}".format(round(mdf_Q.pvalues[1], 3))
-            LM_res_dict['Q_std']  = "{:.2e}".format(mdf_Q.bse[1])
-            LM_res_dict['L_pe']   = "{:.2e}".format(mdf_Q.params[2])
-            LM_res_dict['L_pval'] = "{:.2e}".format(mdf_Q.pvalues[2])
-            LM_res_dict['L_std']  = "{:.2e}".format(mdf_Q.bse[2])
-            LM_res_dict['aic']    = "{:.2e}".format(aic(
-                mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc))
-            LM_res_dict['bic']    = "{:.2e}".format(bic(
-                mdf_Q.llf, mdf_Q.nobs, mdf_Q.df_modelwc))
-            
-            all_df.append(pd.DataFrame.from_dict(LM_res_dict.copy(), 
-                                                 orient = 'columns'))
+            LM_res_dict['roi']    = RSNs[roi]
+            LM_res_dict['Q_pe']   = "{:.3f}".format(round(res[fband + 'Q'][roi], 3))
+            LM_res_dict['Q_pval'] = "{:.3f}".format(round(res[fband + 'Qpval'][roi], 3))
+            LM_res_dict['Q_std']  = "{:.3f}".format(round(res[fband + 'Qerr'][roi], 3))
+            LM_res_dict['L_pe']   = "{:.3f}".format(round(res[fband + 'L'][roi], 3))
+            LM_res_dict['L_pval'] = "{:.3f}".format(round(res[fband + 'Lpval'][roi], 3))
+            LM_res_dict['L_std']  = "{:.3f}".format(round(res[fband + 'Lerr'][roi], 3))
+
+            LM_res_dict['L_bic']    = "{:.1f}".format(round(res[fband + 'Lbic'][roi], 1))
+            LM_res_dict['Q_bic']    = "{:.1f}".format(round(res[fband + 'Qbic'][roi], 1))
+
+            LM_res_dict['L_marg_r2'] = "{:.3f}".format(round(res[fband + 'Lmarginal_r2'][roi], 3))
+            LM_res_dict['L_cond_r2'] = "{:.3f}".format(round(res[fband + 'Lconditional_r2'][roi], 3))
+            LM_res_dict['Q_marg_r2'] = "{:.3f}".format(round(res[fband + 'Qmarginal_r2'][roi], 3))
+            LM_res_dict['Q_cond_r2'] = "{:.3f}".format(round(res[fband + 'Qconditional_r2'][roi], 3))
+
+            if res[fband + 'Qbic'][roi] < res[fband + 'Lbic'][roi]:
+                LM_res_dict['LRT_pval'] = "{:.2e}".format(res[fband + '_LRT_pval'][roi])
+            all_df.append(pd.DataFrame(LM_res_dict.copy(), index = [idx]))
             
 (pd.concat(all_df) ).to_csv(HLTP_pupil.result_dir + '/LM_stats_file.csv')
