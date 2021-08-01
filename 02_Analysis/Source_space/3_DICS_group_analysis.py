@@ -4,7 +4,6 @@
 Created on Wed Aug 14 18:23:29 2019
 Whole-brain average and normalize the DICS power for figures and submit this 
 to ROI analysis
-TODO: clean up this script
 
 @author: podvae01
 """
