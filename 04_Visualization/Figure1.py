@@ -14,6 +14,39 @@ import numpy as np
 #from matplotlib import cm
 import matplotlib.pyplot as plt
 #import pandas as pd
+from scipy.stats import zscore 
+import mne
+
+def plot_fig_1E():
+    #get example subject continuous data
+    subject = 'AA'
+    #epoch_name = 'task_prestim'
+    fname = HLTP_pupil.MEG_pro_dir + '/' + subject + '/' + 'rest01_stage2_rest_raw.fif'#epoch_name + '_ds-epo.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    tl1 = [8000, 12700] 
+    k = 50700; tl2 = [8000 + k, 12700 + k] 
+    
+    pupil = raw._data[HLTP_pupil.pupil_chan, tl1[0]:tl1[1]]
+    MEG = raw._data[100:250, tl1[0]:tl1[1]]
+    
+    fig, ax = plt.subplots(1, 1, figsize = (4.,5))
+    plt.plot(zscore(pupil), color = [.6, .6, .6])
+    plt.plot(4+ zscore(MEG[0,:])/5, color = [0.1, 0.4, 1.])
+    plt.plot(8+ zscore(MEG[-1,:])/5, color = [0.1, 0.4, 1.])
+    plt.box(False)
+    fig.savefig(fig_params.figures_dir + '/example1_pupil_MEG1' + 
+                subject + '.png', bbox_inches = 'tight', transparent = True)
+
+    pupil = raw._data[HLTP_pupil.pupil_chan, tl2[0]:tl2[1]]
+    MEG = raw._data[100:250, tl2[0]:tl2[1]]
+    
+    fig, ax = plt.subplots(1, 1, figsize = (4.,5))
+    plt.plot(zscore(pupil), color = [.6, .6, .6])
+    plt.plot(4+ zscore(MEG[0,:])/5, color = [0.1, 0.4, 1.])
+    plt.plot(8+ zscore(MEG[-1,:])/5, color = [0.1, 0.4, 1.])
+    plt.box(False)
+    fig.savefig(fig_params.figures_dir + '/example1_pupil_MEG2' + 
+                subject + '.png', bbox_inches = 'tight', transparent = True)
 
 def plot_fig_1C():
     
@@ -64,10 +97,9 @@ def plot_fig_1C():
     ax.xaxis.set_ticks_position('bottom')
     fig.savefig(fig_params.figures_dir + '/example2_pupil_' + subject + '.png', 
                     bbox_inches = 'tight', transparent=True)
-    return;
-    
-    
-def plot_fig_1D():
+    return
+
+def plot_fig_1F():
     ''' plot mean power spectrum of all subjects '''
     all_subj_pxx = []
     fig, ax = plt.subplots(1, 1, figsize = (2.,2.))
@@ -81,8 +113,8 @@ def plot_fig_1D():
         ax.xaxis.set_ticks_position('bottom')
         all_subj_pxx.append(Pxx_den)
     
-    m = np.mean(all_subj_pxx, axis = 0);
-    e = np.std(all_subj_pxx, axis = 0) / np.sqrt(24);
+    m = np.mean(all_subj_pxx, axis = 0)
+    e = np.std(all_subj_pxx, axis = 0) / np.sqrt(24)
     ax.fill_between(f, m + e, m-e, color = 'k',
                         alpha = 0.5, edgecolor='none', linewidth=0) 
     plt.plot(f, m, color = 'k')
@@ -108,15 +140,15 @@ def plot_fig_1E():
     group_percentile = np.arange(0., 100., 20);
     perc = np.percentile(pupil_states.mean_pupil, group_percentile)
 
-    fig, ax = plt.subplots(1, 1, figsize = (3.5,2.5))
+    fig, ax = plt.subplots(1, 1, figsize = (3.,2.))
     
     ax.spines['left'].set_position(('outward', 10))
     ax.yaxis.set_ticks_position('left')
     ax.spines['bottom'].set_position(('outward', 15))
     ax.xaxis.set_ticks_position('bottom')
 
-    plt.hist(pupil_states.mean_pupil, bins = np.arange(-3, 3.01, .15), 
-             normed = True, color = [.7,.7,.7])
+    plt.hist(pupil_states.mean_pupil.values, bins = np.arange(-3, 3.01, .15), 
+             density = True, color = [.7,.7,.7])
     for p in perc[1:]:
         plt.axvline(p, color='k', linestyle=':')
     plt.ylim([0, .6]); plt.xlim([-3, 3])

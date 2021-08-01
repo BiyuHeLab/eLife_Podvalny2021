@@ -9,7 +9,8 @@ import fig_params
 from fig_params import *
 import HLTP_pupil
 import numpy as np
-from mne import viz
+#from mne import viz
+#from mayavi import mlab
 
 figures_dir = HLTP_pupil.MEG_pro_dir  +'/_figures'
 freq_bands = dict(
@@ -28,18 +29,36 @@ def plot_fig_2A(ename):
         data = np.array([stcs[s][str(grp)].data for s in range(0, n_subjects)])
         stc_sub_mean[grp] = stcs[0][str(grp)].copy()
         stc_sub_mean[grp]._data = data.mean(axis = 0)
-    
+    todb = 10/np.log(10)
     # Plot mean power for each frequency band
     for fband, band in enumerate(freq_bands.keys()):
         for grp in range(1, 6):
-            band_stc = stc_sub_mean[grp].copy().crop(fband, fband).mean() 
-            fig = viz.plot_source_estimates(band_stc, subjects_dir=FS_dir, 
-                    subject='fsaverage', colorbar = False, surface = 'inflated',
-                    hemi='rh', transparent = False, background = 'white',
-                    time_label='', views='lat', alpha = 0.9,
-                    colormap = 'rainbow', backend = 'matplotlib',
-                    clim=dict(kind='value', lims=(-.15, 0., .15)))
+            band_stc = todb * stc_sub_mean[grp].copy().crop(fband, fband).mean() 
+            # fig = viz.plot_source_estimates(band_stc, subjects_dir=FS_dir, 
+            #         subject='fsaverage', colorbar = False, surface = 'inflated',
+            #         hemi='rh', transparent = False, background = 'white',
+            #         time_label='', views='lat', alpha = 0.9,
+            #         colormap = 'RdYlBu_r', backend = 'matplotlib',
+            #         clim=dict(kind = 'value', lims = (-.15, 0., .15)))
     
-            fig.savefig(figures_dir + '/DICS' + ename + '_raw_fbands_src_' 
-                         + band + str(grp) + '.png', 
-                    bbox_inches = 'tight', transparent=True)
+            # fig.savefig(figures_dir + '/DICS' + ename + '_raw_fbands_src_' 
+            #              + band + str(grp) + '.png', 
+            #         bbox_inches = 'tight', transparent=True)
+            
+            fig = mlab.figure(size=(300, 300))
+            tsts = band_stc.plot(subjects_dir=FS_dir, title = band + str(grp), 
+                          background = 'white', alpha = 0.9,
+                        subject='fsaverage', figure = fig, colormap = 'RdYlBu_r',
+                        hemi='both', transparent = False, backend = 'mayavi',
+                        time_label='', views='lateral', 
+                clim=dict(kind='value', lims=(-0.5, 0., 0.5)))
+            
+            fig.off_screen_rendering = True
+            #fig.save_image(figures_dir + '/testMEG_pupil_fbands_src_' + band + str(grp) + '.png')
+
+            mlab.savefig(figures_dir + '/DICS' + ename + '_raw_fbands_src_' 
+                         + band + str(grp) + '.png')
+            mlab.close(all = True)
+            
+#plot_fig_2A('task_prestim_ds') 
+plot_fig_2A('mean_rest')            

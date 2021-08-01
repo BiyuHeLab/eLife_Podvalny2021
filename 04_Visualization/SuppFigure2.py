@@ -19,7 +19,7 @@ def plot_fig_1A(b):
     # plot sensor space parameter estimates (supplementary)
     # the betsas in this figures are from analysis in Pupil_PSD_sensor_level
     res = pd.read_pickle(
-                HLTP_pupil.result_dir + '/LM_betas_' + b + '.pkl')  #blink_control_
+                HLTP_pupil.result_dir + '/LM_betas_sensor_' + b + '.pkl')  #blink_control_
     con, pos = HLTP_pupil.get_connectivity()   
     mparam = dict(marker = '.', markerfacecolor = 'k', markeredgecolor = 'k',
                         linewidth = 0, markersize = 1)  
@@ -29,10 +29,10 @@ def plot_fig_1A(b):
         else: v = 0.05
         for fband, _ in HLTP_pupil.freq_bands.items():
             fig,ax = plt.subplots(1, 1, figsize = (3,2))
-            c = mne.viz.plot_topomap(res[fband + '_pe' + term], pos, 
-                                 mask = res[fband + '_pval_corrected' + term ] < 0.05, 
+            c = mne.viz.plot_topomap(res[fband + term], pos, 
+                                 mask = res[fband + term + 'pval_corrected'  ] < 0.05, 
                                  sensors = False, 
-                                 mask_params = mparam, axes = ax, show = False, 
+                                 mask_params = mparam, axes = ax, 
                                  vmin = -v, vmax = v,   
                                  extrapolate = 'none',
                                  contours = [-300,300], cmap = 'Spectral_r')
@@ -42,10 +42,8 @@ def plot_fig_1A(b):
             fig.show()
         
             fig.savefig(fig_params.figures_dir + 
-                        '/blink_ctrl_spectral_sensor_topo_'+ term + b + fband +
-                        '.png', dpi = 800, bbox_inches = 'tight', transparent = True)  
-
-
+                        '/test_spectral_sensor_topo_'+ term + b + fband +
+                        '.png', dpi = 800, bbox_inches = 'tight', transparent = True)
 def pwr_data_to_plot():
     for s, subject in enumerate(HLTP_pupil.subjects):
         fname = HLTP_pupil.result_dir + '/PSD' + b + subject +'.pkl'
@@ -57,8 +55,6 @@ def pwr_data_to_plot():
         for band, frange in HLTP_pupil.freq_bands.items():                          
             band_pwr.append(psd[:, :, (freq > frange[0]) & (freq <= frange[1])
                     ].mean(axis = -1))
-            
-        
 def plot_fig_1B(resolution = 10):
     freq = np.arange(0, 128.01, .5)
     pupil = np.arange(resolution/2, 105, resolution)
@@ -95,8 +91,7 @@ def plot_fig_1B(resolution = 10):
                     '/mean_sensor_power_band_by_pupil_size' + band + 
                     str(resolution) + '.png', 
                     bbox_inches = 'tight', 
-                    dpi = 800, transparent = True) 
-
+                    dpi = 800, transparent = True)
 def plot_fig_1B_archive():
     freq = np.arange(0, 128.01, .5)
     for b in ['task_prestim', 'rest']:
@@ -119,8 +114,7 @@ def plot_fig_1B_archive():
         fig.savefig(fig_params.figures_dir + 
                     '/mean_sensor_power_map_by_pupil_size' + b + '.png', 
                     bbox_inches = 'tight', 
-                    dpi = 800, transparent = True) 
-        
+                    dpi = 800, transparent = True)
 def plot_ANOVA_result(b):
 
     con, pos = HLTP_pupil.get_connectivity()   
@@ -144,18 +138,14 @@ def plot_ANOVA_result(b):
     
         fig.savefig(fig_params.figures_dir + '/spectral_sensor_topo_'+ b + band +
                         '.png', dpi = 800, bbox_inches = 'tight', transparent = True)
-
-        
-
-        
 def plot_betas(block_name):
     for term in [1, 2]:
         errs = []; betas = []
 
         for fband, frange in HLTP_pupil.freq_bands.items():
             mdf_Q = pd.read_pickle(
-                    HLTP_pupil.MEG_pro_dir + 
-                    '/results/mixedlmQ_full_pupil_' + block_name
+                    HLTP_pupil.result_dir +
+                    '/mixedlmQ_full_pupil_' + block_name
                            + fband +'.pkl')
             betas.append(mdf_Q.params[term])
             errs.append(mdf_Q.bse[term])
@@ -182,7 +172,7 @@ def plot_lin_betas(block_name):
 
         for fband, frange in HLTP_pupil.freq_bands.items():
             mdf_L = pd.read_pickle(
-                    HLTP_pupil.MEG_pro_dir + '/results/mixedlmL_full_pupil_' + block_name
+                    HLTP_pupil.result_dir + '/mixedlmL_full_pupil_' + block_name
                            + fband +'.pkl')
             betas.append(mdf_L.params[1])
             errs.append(mdf_L.bse[1])
@@ -203,8 +193,54 @@ def plot_lin_betas(block_name):
                     '/betas_mean_sensor_power_band_by_pupil_size_lin' + block_name + '.png', 
                     bbox_inches = 'tight', 
                     dpi = 800, transparent = True)   
-        
-plot_fig_1A('task_prestim')        
+
+
+def plot_blink_dependent_bhv():
+    adf = HLTP_pupil.load(HLTP_pupil.result_dir + '/blink_dependent_SDT_bhv.pkl')
+
+    y_lims = {'HR': [0., 1], 'FAR': [-.2, 1.2], 'c': [-1., 2.], 'd': [-1., 2.5],
+              'p_correct': [0.2, 0.8], 'catRT': [0.6, 1.6]}
+    bhv_vars = ['HR', 'FAR', 'c', 'd', 'p_correct', 'catRT']
+
+    for bhv_var in bhv_vars:
+        data = [adf[~adf.blink][bhv_var].values, adf[adf.blink][bhv_var].values]
+        nansubj = np.concatenate([np.where(np.isnan(data[0]))[0], np.where(np.isnan(data[1]))[0]])
+        if nansubj.shape[0] > 0:
+            data[0] = np.delete(data[0], nansubj);
+            data[1] = np.delete(data[1], nansubj)
+        print(bhv_var, scipy.stats.wilcoxon(data[0], data[1]))
+        fig, ax = plt.subplots(1, 1, figsize=(0.8, 1.5))
+
+        ax.spines['left'].set_position(('outward', 10))
+        ax.yaxis.set_ticks_position('left')
+        ax.spines['bottom'].set_position(('outward', 15))
+        ax.xaxis.set_ticks_position('bottom')
+        box1 = plt.boxplot(data, positions=[0, 1], patch_artist=True,
+                           widths=0.8, showfliers=False,
+                           boxprops=None, showbox=None, whis=0, showcaps=False)
+
+        box1['boxes'][0].set(facecolor='c', lw=0, zorder=0, alpha=0.1)
+        box1['boxes'][1].set(facecolor='r', lw=0, zorder=0, alpha=0.1)
+
+        box1['medians'][0].set(color='c', lw=2, zorder=20)
+        box1['medians'][1].set(color='r', lw=2, zorder=20)
+        plt.plot([0, 1], data,
+                 color=[.5, .5, .5], lw=0.5)
+        plt.plot([0], [data[0]], 'o',
+                 markerfacecolor=[.9, .9, .9], color='c',
+                 alpha=1.)
+        plt.plot([1], [data[1]], 'o',
+                 markerfacecolor=[.9, .9, .9], color='r', alpha=1.)
+        plt.locator_params(axis='y', nbins=6)
+        plt.ylim(y_lims[bhv_var])
+        plt.xlim([-.4, 1.4])
+
+        plt.ylabel(bhv_var)
+        fig.savefig(figures_dir + '/bhv_blink_' + bhv_var +
+                    '.png', dpi=800, bbox_inches='tight', transparent=True)
+
+
+plot_fig_1A('task_prestim')
 plot_fig_1A('rest')    
 plot_betas('rest_')  
 plot_betas('bhv_')    
