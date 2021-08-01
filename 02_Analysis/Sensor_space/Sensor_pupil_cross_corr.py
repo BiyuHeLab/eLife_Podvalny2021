@@ -55,28 +55,35 @@ for b in ['rest01', 'rest02', 'task_prestim']:
     HLTP_pupil.save(all_cc, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
                         '/cross_corr_' + b + '.pkl')
 
-# combine the two blocks of rest trials
-all_cc1= HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
+# combine the two blocks of rest trials & save as array instead of list
+all_cc1 = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
                         '/cross_corr_rest01.pkl')
-all_cc2= HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
+all_cc2 = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
                         '/cross_corr_rest02.pkl')
 for subject in subjects:
-    all_cc1[subject] = np.concatenate(
-        [all_cc1[subject], all_cc2[subject]], axis = )
+    if subject in list(all_cc2.keys()):
+        all_cc1[subject] = np.concatenate(
+            [np.array(all_cc1[subject]), np.array(all_cc2[subject])], axis = 0)
+    else:
+        all_cc1[subject] = np.array(all_cc1[subject])
 HLTP_pupil.save(all_cc1, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
                         '/cross_corr_rest.pkl')
 
-
-
-
+all_cc = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
+                        '/cross_corr_task_prestim.pkl')
+for subject in subjects:
+    all_cc[subject] = np.array(all_cc[subject])
+HLTP_pupil.save(all_cc, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
+                        '/cross_corr_task_prestim.pkl')    
+# test significance
 for b in ['rest', 'task_prestim']:
     # load array of correlation coefficient
      
     all_cc = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                        '/cross_corr_' + b + fband + '.pkl')
+                        '/cross_corr_' + b  + '.pkl')
     # fisher transform and average across trials
-    x = np.array([np.arctanh(np.array(all_cc[s])).mean(axis = 0) 
-                                            for s in range(len(all_cc))])
+    x = np.array([np.arctanh(all_cc[s]).mean(axis = 0) 
+                                            for s in subjects])
     # t-test with spatio-temporal cluster correction for multiple comparisons
     x = np.swapaxes(x, 1, 2)
     connectivity, pos = HLTP_pupil.get_connectivity()   
@@ -96,7 +103,7 @@ for b in ['rest', 'task_prestim']:
             times = clusters[g][0]        
             mask[times, sensors.astype(int)] = True
     HLTP_pupil.save(mask, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                        '/cross_corr_sig_mask_' + b + fband + '.pkl')
+                        '/cross_corr_sig_mask_' + b  + '.pkl')
 
 
 
