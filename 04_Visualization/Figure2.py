@@ -9,9 +9,9 @@ import fig_params
 from fig_params import *
 import HLTP_pupil
 import numpy as np
-#from mne import viz
-#from mayavi import mlab
-
+from mne import viz
+from mayavi import mlab
+# use either mne viz or mayavi, whatever works - can be buggy with Virtual Machines
 figures_dir = HLTP_pupil.MEG_pro_dir  +'/_figures'
 freq_bands = dict(
     delta=(1, 4), theta=(4, 8), alpha=(8, 13), beta=(13, 30), gamma=(30, 90))  
@@ -60,5 +60,5 @@ def plot_fig_2A(ename):
                          + band + str(grp) + '.png')
             mlab.close(all = True)
             
-#plot_fig_2A('task_prestim_ds') 
+plot_fig_2A('task_prestim_ds')
 plot_fig_2A('mean_rest')            
