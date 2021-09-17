@@ -94,7 +94,9 @@ def prepare_fig6():
                                 '/Source_CSV_files/fig6E.csv')
 
 
-
+prepare_fig1_csv()
+prepare_fig3B_csv()
+prepare_supp_fig1_csv()
 
 
 
