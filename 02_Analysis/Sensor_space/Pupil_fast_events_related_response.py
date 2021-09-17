@@ -17,20 +17,35 @@ from sklearn.linear_model import LinearRegression
 from scipy.stats import distributions
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
-def analyse_events(subject, block, filt_pupil, fs):
+def analyse_events(subject, block, filt_pupil, fs, d = 0):
     # find local minima maxima within 500 ms vicinity
-    mini = argrelextrema(filt_pupil, np.less, 
+    # local minima signify dilation start
+    mini = argrelextrema(filt_pupil, np.less,
                          order = np.int(.5 * fs))[0]
-    maxi = argrelextrema(filt_pupil, np.greater, 
+    # local maxima signify constriction start
+    maxi = argrelextrema(filt_pupil, np.greater,
                          order = np.int(.5 * fs))[0]
-    # We forgot to turn on the eye-tracker for first minutes in one block only
+    if d > 0:
+        maxi = scipy.signal.find_peaks(filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
+        mini = scipy.signal.find_peaks(-filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
+
+    # We forgot to turn on the eye-tracker for first minute in one block only
     if (subject == 'AC') & (block == 'rest01'): 
         mini = mini[mini > 8000]; maxi = maxi[maxi > 8000]
+    # test plot
+    samp = np.arange(len(filt_pupil))
+    plt.plot(samp, filt_pupil)
+    plt.scatter(mini, filt_pupil[mini], facecolor='r')
+    plt.scatter(maxi, filt_pupil[maxi], facecolor='g')
     # identify the steepness of constriction and dilation
-    pupil_events = np.concatenate([mini, maxi])    
-    n_mini = len(mini)
+    pupil_events = np.concatenate([mini, maxi])
+    event_code = np.zeros(len(pupil_events))
+    event_code[:len(mini)] = -1; event_code[len(mini):] = 1
 
+    # here I split by slope steepness  "2" = fast "1" = slow
+    # didn't end up using this for further analysis
     slopes = np.zeros(len(pupil_events))
     for event_id, m  in enumerate(pupil_events):
         # fit 100 ms after the detected event. 
@@ -39,15 +54,16 @@ def analyse_events(subject, block, filt_pupil, fs):
         #R2 = model.score(np.arange(len(X)).reshape(-1, 1), X)
         slopes[event_id] = model.coef_
     
-    # here I split by slope steepness  "2" = fast "1" = slow  
-    dil_code = np.digitize(slopes[:n_mini], 
-                           np.percentile(slopes[:n_mini], [0., 50.]))
-    con_code = -np.digitize(-slopes[n_mini:], 
-                            np.percentile(-slopes[n_mini:], [0., 50.]))
-    event_code = np.concatenate([con_code, dil_code])
+    #n_mini = len(mini)
+    #dil_code = np.digitize(slopes[:n_mini],
+    #                       np.percentile(slopes[:n_mini], [0., 50.]))
+    #con_code = -np.digitize(-slopes[n_mini:],
+    #                        np.percentile(-slopes[n_mini:], [0., 50.]))
+    #event_code = np.concatenate([con_code, dil_code])
+
     return pupil_events, event_code, slopes
 
-def get_pupil_events(block, subject):
+def get_pupil_events(block, subject, d = 0):
     # Create the filter for pupil
     filter_order = 2
     frequency_cutoff = 5
@@ -58,14 +74,15 @@ def get_pupil_events(block, subject):
     pupil_data = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir 
                                      + '/' + subject + '/' + pupil_fname)
     # Apply the filter & resample
+    #filt_pupil = pupil_data
     filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data))
     filt_pupil = mne.filter.resample(filt_pupil, 
                 down = HLTP_pupil.raw_fs / HLTP_pupil.resamp_fs )
     pupil_events, event_code, slopes = analyse_events(subject, block, 
-                                      filt_pupil, HLTP_pupil.resamp_fs)
+                                      filt_pupil, HLTP_pupil.resamp_fs, d)
     return pupil_events, event_code, slopes
 
-def save_rest_pupil_event_related_MEG():
+def save_rest_pupil_event_related_MEG(d):
     freq = [0, 5]
     # Note: this analysis would not be informative for task because events 
     # caused by stimuli
@@ -78,7 +95,7 @@ def save_rest_pupil_event_related_MEG():
             if not os.path.exists(subj_data_file):   
                 continue
 
-            pupil_events, event_code, slope = get_pupil_events(block, subject)
+            pupil_events, event_code, slope = get_pupil_events(block, subject, d)
             events = np.zeros( (len(pupil_events), 3) ).astype('int')
             events[:, 0] = pupil_events
             events[:, 2] = event_code
@@ -88,8 +105,8 @@ def save_rest_pupil_event_related_MEG():
             raw_data = raw_data.filter(freq[0], freq[1])
             #raw_data = raw_data.apply_hilbert(envelope = True)
             epochs = mne.Epochs(raw_data, events, 
-                                    event_id = {'slow_con':1, 'fast_con':2, 
-                                                'slow_dil':-1, 'fast_dil':-2 }, 
+                                    event_id = {'con':1,
+                                                'dil':-1 },
                                         baseline = None, proj = True, detrend = 0,
                                         tmin = -1, tmax = 1, preload = True)
             epochs.pick_types(meg = True, ref_meg = False, exclude=[])
@@ -99,20 +116,20 @@ def save_rest_pupil_event_related_MEG():
                     evo[event_id + subject] = epochs[event_id].average()
         
         HLTP_pupil.save(evo, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                                '/evoked_by_pupil_event2_' + block + '.pkl')
+                                '/np_evoked_by_pupil_event2_' + block + '.pkl')
     
-def combine_rest_blocks_evo():
+def combine_rest_blocks_evo(tag):
      evo1 = HLTP_pupil.load( HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                                '/evoked_by_pupil_event2_rest01.pkl')
+                                '/np_evoked_by_pupil_event2_rest01.pkl')
      evo2 = HLTP_pupil.load( HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                                '/evoked_by_pupil_event2_rest02.pkl')
+                                '/np_evoked_by_pupil_event2_rest02.pkl')
      for subject in HLTP_pupil.subjects:
-         for event_id in ['slow_con', 'fast_con', 'slow_dil', 'fast_dil']:
+         for event_id in ['con', 'dil']:
              if (event_id + subject) in evo2.keys():
                  evo1[event_id + subject].data = (evo1[event_id + subject].data +
                                               evo2[event_id + subject].data)/2
      HLTP_pupil.save(evo1, HLTP_pupil.MEG_pro_dir + '/pupil_result' + 
-                                '/evoked_by_pupil_event_rest.pkl')
+                                '/np_evoked_by_pupil_event_rest' + tag +'.pkl')
 
 def spatiotemp_perm_test(dd, samp_evo):
     connectivity, pos = HLTP_pupil.get_connectivity()
@@ -137,20 +154,11 @@ def spatiotemp_perm_test(dd, samp_evo):
            
     return samp_evo, mask
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
-        
-        
-    
-    
+for d in [0, 0.5, 1, 1.5, 2, 2.5]:
+    save_rest_pupil_event_related_MEG(d)
+    combine_rest_blocks_evo(tag = str(int(d*1000)))
+
 
 
 # import  matplotlib.pyplot as plt
