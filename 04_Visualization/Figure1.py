@@ -11,10 +11,8 @@ import fig_params
 from fig_params import *
 import HLTP_pupil
 import numpy as np
-#from matplotlib import cm
 import matplotlib.pyplot as plt
-#import pandas as pd
-from scipy.stats import zscore 
+from scipy.stats import zscore
 import mne
 
 def plot_fig_1E():
@@ -48,7 +46,7 @@ def plot_fig_1E():
     fig.savefig(fig_params.figures_dir + '/example1_pupil_MEG2' + 
                 subject + '.png', bbox_inches = 'tight', transparent = True)
 
-def plot_fig_1C():
+def plot_fig_1D():
     
     subject = 'AC'
     block_name = 'rest01'
@@ -132,12 +130,12 @@ def plot_fig_1F():
                 bbox_inches = 'tight', transparent = True)  
     return
 
-def plot_fig_1E():
+def plot_fig_1G():
     epoch_name = 'task_prestim'
     subject = 'SF'
     pupil_states = HLTP_pupil.load(HLTP_pupil.result_dir + '/pupil_states_' + 
                             epoch_name + subject + '.pkl')
-    group_percentile = np.arange(0., 100., 20);
+    group_percentile = np.arange(0., 100., 20)
     perc = np.percentile(pupil_states.mean_pupil, group_percentile)
 
     fig, ax = plt.subplots(1, 1, figsize = (3.,2.))
@@ -161,37 +159,12 @@ def plot_fig_1E():
                 bbox_inches = 'tight', transparent = True)
     return
 
-def plot_fig_1X():
-    block_name = 'rest01'
-    [mean_con, mean_dil] = HLTP_pupil.load(
-                     HLTP_pupil.result_dir + '/ERpupil_' + block_name + '.pkl')                  
-    times = np.arange(-1, 1, 2/2400)
-    m1 = np.mean(np.array(mean_con), axis = 0)
-    e1 = np.std(np.array(mean_con), axis = 0) / np.sqrt(24)
-    m2 = np.mean(np.array(mean_dil), axis = 0)
-    e2 = np.std(np.array(mean_dil), axis = 0) / np.sqrt(24)
-    
-    fig, ax = plt.subplots(1, 1, figsize = (2.,2.))
-    ax.fill_between(times, m1 + e1, m1 - e1, color = 'c',
-                        alpha = 0.5, edgecolor='none', linewidth=0) 
-    ax.fill_between(times, m2 + e2, m2 - e2, color = 'r',
-                        alpha = 0.5, edgecolor='none', linewidth=0)
-    ax.spines['left'].set_position(('outward', 10))
-    ax.yaxis.set_ticks_position('left')
-    ax.spines['bottom'].set_position(('outward', 15))
-    ax.xaxis.set_ticks_position('bottom')
-    plt.xlim([-1, 1])
-    plt.ylim([-.7, .7])
-    plt.xlabel('Dilation onset');plt.ylabel('Pupil size (a.u.)')
 
-    #plt.plot(np.array(mean_con).mean(axis = 0));
-    #plt.plot(np.array(mean_dil).mean(axis = 0));  
-#------------------------------------------------------------------------------
-
-plot_fig_1C()    
-plot_fig_1D() 
+plot_fig_1D()
 plot_fig_1E()
-    
+plot_fig_1F()
+plot_fig_1G()
+
     
     
     
