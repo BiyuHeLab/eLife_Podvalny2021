@@ -26,21 +26,14 @@ def analyse_events(subject, block, filt_pupil, fs, d = 0):
     # local maxima signify constriction start
     maxi = argrelextrema(filt_pupil, np.greater,
                          order = np.int(.5 * fs))[0]
-<<<<<<< HEAD
     if d > 0:
         maxi = scipy.signal.find_peaks(filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
         mini = scipy.signal.find_peaks(-filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
 
-=======
->>>>>>> 70e2760b78e8fbeb3fc84ecc9e2627120ea87b7e
     # We forgot to turn on the eye-tracker for first minute in one block only
     if (subject == 'AC') & (block == 'rest01'): 
         mini = mini[mini > 8000]; maxi = maxi[maxi > 8000]
-    # test plot
-    samp = np.arange(len(filt_pupil))
-    plt.plot(samp, filt_pupil)
-    plt.scatter(mini, filt_pupil[mini], facecolor='r')
-    plt.scatter(maxi, filt_pupil[maxi], facecolor='g')
+
     # identify the steepness of constriction and dilation
     pupil_events = np.concatenate([mini, maxi])
     event_code = np.zeros(len(pupil_events))
@@ -55,13 +48,6 @@ def analyse_events(subject, block, filt_pupil, fs, d = 0):
         model = LinearRegression().fit(np.arange(len(X)).reshape(-1, 1), X)
         #R2 = model.score(np.arange(len(X)).reshape(-1, 1), X)
         slopes[event_id] = model.coef_
-    
-    #n_mini = len(mini)
-    #dil_code = np.digitize(slopes[:n_mini],
-    #                       np.percentile(slopes[:n_mini], [0., 50.]))
-    #con_code = -np.digitize(-slopes[n_mini:],
-    #                        np.percentile(-slopes[n_mini:], [0., 50.]))
-    #event_code = np.concatenate([con_code, dil_code])
 
     return pupil_events, event_code, slopes
 
@@ -76,14 +62,10 @@ def get_pupil_events(block, subject, d = 0):
     pupil_data = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir 
                                      + '/' + subject + '/' + pupil_fname)
     # Apply the filter & resample
-<<<<<<< HEAD
     #filt_pupil = pupil_data
-    filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data))
-=======
     filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data)) # zero-phase
->>>>>>> 70e2760b78e8fbeb3fc84ecc9e2627120ea87b7e
-    filt_pupil = mne.filter.resample(filt_pupil, 
-                down = HLTP_pupil.raw_fs / HLTP_pupil.resamp_fs )
+    #filt_pupil = mne.filter.resample(filt_pupil,
+    #            down = HLTP_pupil.raw_fs / HLTP_pupil.resamp_fs )
     pupil_events, event_code, slopes = analyse_events(subject, block, 
                                       filt_pupil, HLTP_pupil.resamp_fs, d)
     return pupil_events, event_code, slopes

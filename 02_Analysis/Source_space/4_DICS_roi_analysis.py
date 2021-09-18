@@ -93,8 +93,6 @@ def save_fullband_filters():
         for subject in subjects:
             save_subject_fullband_filter(subject, epoch_name)
 
-# TODO: figure out difference between data in files roi_single_epoch_dics_power_
-# and roi_epoch_dics_power_: correlated but not the same, why? - I think because I changed conductivity
 def save_subject_epoch_roi_band_pwr(subject, epoch_name, labels, fmin, fmax):
 
     sub_pro_dir = MEG_pro_dir + '/' + subject
