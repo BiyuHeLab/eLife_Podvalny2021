@@ -11,7 +11,7 @@ import numpy as np
 from statsmodels.tools.eval_measures import bic, aic
 
 vtype = 'pupil_'
-vtype = 'pupilres2__'
+#vtype = 'pupilres2__'
 
 def prep_stats_dfs(vtype):
     Qall_df = []; Lall_df = []
