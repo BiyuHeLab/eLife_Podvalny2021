@@ -3,7 +3,7 @@
 """
 Created on Thu Jan 30 12:49:19 2020
 
-Describe MEG activity time-locked to pupillary events - constriction 
+Describe MEG sensor-level activity time-locked to pupillary events - constriction 
 and dilation - in rest
 
 @author: podvae01
@@ -17,7 +17,6 @@ from sklearn.linear_model import LinearRegression
 from scipy.stats import distributions
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 
 def analyse_events(subject, block, filt_pupil, fs, d = 0):
     # find local minima maxima within 500 ms vicinity
@@ -27,10 +26,13 @@ def analyse_events(subject, block, filt_pupil, fs, d = 0):
     # local maxima signify constriction start
     maxi = argrelextrema(filt_pupil, np.greater,
                          order = np.int(.5 * fs))[0]
+<<<<<<< HEAD
     if d > 0:
         maxi = scipy.signal.find_peaks(filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
         mini = scipy.signal.find_peaks(-filt_pupil, prominence = .5*filt_pupil.std(), distance = np.int(d * fs))[0]
 
+=======
+>>>>>>> 70e2760b78e8fbeb3fc84ecc9e2627120ea87b7e
     # We forgot to turn on the eye-tracker for first minute in one block only
     if (subject == 'AC') & (block == 'rest01'): 
         mini = mini[mini > 8000]; maxi = maxi[maxi > 8000]
@@ -74,8 +76,12 @@ def get_pupil_events(block, subject, d = 0):
     pupil_data = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir 
                                      + '/' + subject + '/' + pupil_fname)
     # Apply the filter & resample
+<<<<<<< HEAD
     #filt_pupil = pupil_data
     filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data))
+=======
+    filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data)) # zero-phase
+>>>>>>> 70e2760b78e8fbeb3fc84ecc9e2627120ea87b7e
     filt_pupil = mne.filter.resample(filt_pupil, 
                 down = HLTP_pupil.raw_fs / HLTP_pupil.resamp_fs )
     pupil_events, event_code, slopes = analyse_events(subject, block, 
@@ -161,33 +167,3 @@ for d in [0, 0.5, 1, 1.5, 2, 2.5]:
 
 
 
-# import  matplotlib.pyplot as plt
-# subject = 'AC'
-# pupil_data = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir 
-#                                      + '/' + subject + '/' + pupil_fname)
-# # Apply the filter & resample
-# filt_pupil = scipy.stats.zscore(filtfilt(b, a, pupil_data))
-# filt_pupil = mne.filter.resample(filt_pupil, 
-#              down = HLTP_pupil.raw_fs / HLTP_pupil.resamp_fs )
-# pupil_events, event_code = get_pupil_events(subject, 
-#                                                     filt_pupil, HLTP_pupil.resamp_fs)
-    
-# time = np.arange(0, len(filt_pupil)) / HLTP_pupil.raw_fs
-
-# fig, ax = plt.subplots(figsize = [2., 2.]);      
-
-# plt.plot(time-30, filt_pupil, color = 'gray')
-# plt.plot(time[pupil_events[event_code > 0]]-30, 
-#          filt_pupil[pupil_events[event_code > 0]], 'co', alpha = 0.5)
-# plt.plot(time[pupil_events[event_code < 0]]-30, 
-#          filt_pupil[pupil_events[event_code < 0]], 'ro', alpha = 0.5)
-# plt.ylim([-3, 3])
-# ax.spines['left'].set_position(('outward', 10))
-# ax.yaxis.set_ticks_position('left')
-# ax.spines['bottom'].set_position(('outward', 15))
-# ax.xaxis.set_ticks_position('bottom')
-# plt.xlabel('time (s)')
-# plt.xlim([0, 5])
-# plt.ylabel('Pupil size (s.d.)')
-# fig.savefig(figures_dir + '/example_pupil_min_max.png', 
-#                 bbox_inches = 'tight', transparent=True)
