@@ -17,7 +17,7 @@ import pandas as pd
 
 def plot_fig_1A(b):
     # plot sensor space parameter estimates (supplementary)
-    # the betsas in this figures are from analysis in Pupil_PSD_sensor_level
+    # the betas in this figures are from analysis in Pupil_PSD_sensor_level
     res = pd.read_pickle(
                 HLTP_pupil.result_dir + '/LM_betas_sensor_' + b + '.pkl')  #blink_control_
     con, pos = HLTP_pupil.get_connectivity()   
@@ -55,6 +55,7 @@ def pwr_data_to_plot():
         for band, frange in HLTP_pupil.freq_bands.items():                          
             band_pwr.append(psd[:, :, (freq > frange[0]) & (freq <= frange[1])
                     ].mean(axis = -1))
+
 def plot_fig_1B(resolution = 10):
     freq = np.arange(0, 128.01, .5)
     pupil = np.arange(resolution/2, 105, resolution)
@@ -92,6 +93,7 @@ def plot_fig_1B(resolution = 10):
                     str(resolution) + '.png', 
                     bbox_inches = 'tight', 
                     dpi = 800, transparent = True)
+
 def plot_fig_1B_archive():
     freq = np.arange(0, 128.01, .5)
     for b in ['task_prestim', 'rest']:
@@ -115,6 +117,7 @@ def plot_fig_1B_archive():
                     '/mean_sensor_power_map_by_pupil_size' + b + '.png', 
                     bbox_inches = 'tight', 
                     dpi = 800, transparent = True)
+
 def plot_ANOVA_result(b):
 
     con, pos = HLTP_pupil.get_connectivity()   
@@ -138,6 +141,7 @@ def plot_ANOVA_result(b):
     
         fig.savefig(fig_params.figures_dir + '/spectral_sensor_topo_'+ b + band +
                         '.png', dpi = 800, bbox_inches = 'tight', transparent = True)
+
 def plot_betas(block_name):
     for term in [1, 2]:
         errs = []; betas = []
@@ -166,6 +170,7 @@ def plot_betas(block_name):
                     '/betas_mean_sensor_power_band_by_pupil_size' + block_name + str(term) + '.png', 
                     bbox_inches = 'tight', 
                     dpi = 800, transparent = True) 
+
 def plot_lin_betas(block_name):
     # plot sensor level betas
         errs = []; betas = []
