@@ -112,7 +112,7 @@ def fitLM_for_roi_pwr():
                           ' dropping random factors')
 
                     #return 1
-                # fit with pymer to get tge r2
+                # fit with pymer to get the r2
                 model = Lmer(fband + str(roi)  + ' ~ pupil + 1 + (0 + pupil|subject)', data = df.dropna())
                 model.fit(REML=False, method='Powell')
                 r2 = piecewiseSEM.rsquared(model.model_obj)
