@@ -14,17 +14,55 @@ import scipy
 #import mne
 from matplotlib import pyplot as plt
 import pandas as pd
-import mne 
+import mne
+from matplotlib import cm
+
 figures_dir = HLTP_pupil.MEG_pro_dir  +'/_figures'
 con, pos = HLTP_pupil.get_connectivity()
+
+def plot_iei_effect():
+# plot inter-event intervals for revisions
+    clrs = {'dil':cm.autumn_r(np.linspace(0, 1, 5)),
+            'con':cm.winter_r(np.linspace(0, 1, 5))};
+
+    for chn in [189, 59]:
+        c = 0
+        fig, ax = plt.subplots(1, 1, figsize=(2., 2.8))
+        plt.plot([0, 0], [-30, 30], 'k--')
+        plt.plot([-1, 1], [0, 0], 'k--')
+        eid = 'dil'
+
+        for d in [0, 0.5, 1, 1.5, 2, 2.5]:
+            evo = pd.read_pickle('/isilon/LFMI/VMdrive/Ella/HLTP_MEG/proc_data/pupil_result' +
+                                 '/np_evoked_by_pupil_event_rest' + str(int(d*1000)) + '.pkl')
+            times = evo[eid + 'AA'].times
+            for evnt in ['dil', 'con']:
+                data_to_plot = [evo[evnt + s].data / 1e-15
+                                        for s in subjects]
+                m_dil = np.mean(data_to_plot, axis=0)[chn, :]
+                e_dil = np.std(data_to_plot, axis=0)[chn, :] / np.sqrt(24)
+                plt.plot(times, m_dil, '-', color=clrs[evnt][c])
+                ax.fill_between(times, m_dil + e_dil, m_dil - e_dil, color=clrs[evnt][c],
+                                    alpha = 0.2, edgecolor='none', linewidth=0)
+            c += 1
+        plt.xlabel('Time (s)')
+        plt.ylabel('MEG (fT)')
+        ax.spines['left'].set_position(('outward', 10))
+        ax.yaxis.set_ticks_position('left')
+        ax.spines['bottom'].set_position(('outward', 15))
+        ax.xaxis.set_ticks_position('bottom')
+        plt.xlim([-1, 1])
+        plt.ylim([-50, 50])
+        fig.savefig(figures_dir + '/DvsC_chan_example_'+str(int(d*1000))+'_' + str(chn) +
+                            '.png', dpi=800, bbox_inches='tight', transparent=True)
 
 
 def plot_evoked_example():
     evo = HLTP_pupil.load(HLTP_pupil.MEG_pro_dir + '/pupil_result' +
                           '/evoked_by_pupil_event_rest.pkl')
     evo = pd.read_pickle('/isilon/LFMI/VMdrive/Ella/HLTP_MEG/proc_data/pupil_result' +
-                         '/evoked_by_pupil_event_rest.pkl')
-    eid = 'slow_dil'
+                         '/np_evoked_by_pupil_event_rest0.pkl')
+    eid = 'dil'
     times = evo[eid + 'AA'].times
 
     for chn in [189, 59]:  # range(35, 70):##range(30):
@@ -34,8 +72,7 @@ def plot_evoked_example():
         plt.plot([-1, 1], [0, 0], 'k--')
         clr = {'dil': 'r', 'con': 'c'}
         for evnt in ['dil', 'con']:
-            data_to_plot = [(evo['slow_' + evnt + s].data
-                             + evo['fast_' + evnt + s].data) / 2. / 1e-15
+            data_to_plot = [(evo[ evnt + s].data)  / 1e-15
                             for s in subjects]
             m_dil = np.mean(data_to_plot, axis=0)[chn, :]
             e_dil = np.std(data_to_plot, axis=0)[chn, :] / np.sqrt(24)
@@ -50,7 +87,7 @@ def plot_evoked_example():
         ax.xaxis.set_ticks_position('bottom')
         plt.xlim([-1, 1])
         plt.ylim([-30, 30])
-        fig.savefig(figures_dir + '/DvsC_chan_example_' + str(chn) +
+        fig.savefig(figures_dir + '/DvsC_chan_example_1s_' + str(chn) +
                     '.png', dpi=800, bbox_inches='tight', transparent=True)
 
         for eid in ['slow_con', 'fast_con', 'slow_dil', 'fast_dil']:
