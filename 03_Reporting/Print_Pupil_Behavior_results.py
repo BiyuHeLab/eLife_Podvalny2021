@@ -11,7 +11,6 @@ import numpy as np
 from statsmodels.tools.eval_measures import bic, aic
 
 vtype = 'pupil_'
-#vtype = 'pupilres2__'
 
 def prep_stats_dfs(vtype):
     Qall_df = []; Lall_df = []
@@ -57,11 +56,11 @@ def prep_stats_dfs(vtype):
     return Qall_df, Lall_df
 
 # print pupil-linked behavior to file    
-for vtype in ['pupil_']:#, 'pupilres2__'
-    Qall_df, Lall_df = prep_stats_dfs(vtype)
-    (pd.concat(Lall_df) ).to_csv(HLTP_pupil.result_dir + 
+vtype = 'pupil_'
+Qall_df, Lall_df = prep_stats_dfs(vtype)
+(pd.concat(Lall_df) ).to_csv(HLTP_pupil.result_dir +
                                  '/Pupil_L_stats_' + vtype + '.csv')
-    (pd.concat(Qall_df) ).to_csv(HLTP_pupil.result_dir + 
+(pd.concat(Qall_df) ).to_csv(HLTP_pupil.result_dir +
                                  '/Pupil_Q_stats_' + vtype + '.csv')
 
 #print power-linked behavior to file
