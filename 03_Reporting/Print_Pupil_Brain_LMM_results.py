@@ -17,7 +17,7 @@ kwords = ['exp', 'fband', 'roi', 'Q_pe', 'Q_pval', 'Q_std',
           'L_pe', 'L_pval', 'L_std', 'L_bic', 'Q_bic', 'L_marg_r2', 'Q_marg_r2', 'L_cond_r2', 'Q_cond_r2']
 all_df = []
 idx = 0
-RSNs = ['Vis','SM','DAN','VAN','Lim','FPN', 'DMN']
+RSNs = ['Vis', 'SM', 'DAN', 'VAN', 'Lim', 'FPN', 'DMN']
 for b in ['task_prestim', 'rest']:
     res = pd.read_pickle(HLTP_pupil.result_dir + '/LM_betas_full_random_' + b + '.pkl')
 
