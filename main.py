@@ -3,42 +3,34 @@
 """
 Created on Tue Nov  5 16:39:47 2019
 
-This doc explains the analysis order and other scirpts organization.
-
--------------------------------------------------------------------------------
-1. MEG_preproc.py
--------------------------------------------------------------------------------
-Preprocessing of MEG data. Running this script ends with generation of 
-                       *_stage2_raw.fif 
-containing ICA-cleaned contineous data for each experiment run
-
--------------------------------------------------------------------------------
-2. Pupil_preproc.py
--------------------------------------------------------------------------------
-This script preprocesses pupil size within each experiment block and 
-generates files named: 
-    clean_pupil_BlockName.pkl # replaced blinks with NaN
-    clean_interp_pupil_BlockName.pkl # blinks are interpolated
-    clean_interp_pupil_ds_BlockName.pkl # the above downsampled to 256 Hz
-    
-------------------------------------------------------------------------------- 
-k.   
--------------------------------------------------------------------------------    
+This doc explains the analysis order and other scripts organization.
 @author: podvae01
 """
+#-------------------------------------------------------------------------------
+# 1. Preprocessing
+#-------------------------------------------------------------------------------
+# All files are located in a folder named 01_Preprocessing.
 
+# Behavior: read the raw psychtoolbox matlab files and organize in a dataframe
+01_prepare_behavior_dataframe
 
+# Pupil: preprocesses pupil size within each experiment block and
+# generate files named:
+#    clean_pupil_BlockName.pkl # replaced blinks with NaN
+#    clean_interp_pupil_BlockName.pkl # blinks are interpolated
+#    clean_interp_pupil_ds_BlockName.pkl # the above downsampled to 256 Hz
+02_pupil_preproc
 
+# MEG data: Running this script ends with generation of *_stage2_raw.fif
+# files containing ICA-cleaned continuous data for each experiment run
+# also prepares epochs
+03_MEG_preproc
 
-
-# Analysis of pupil and behavior 
-
-# Use this script to prepare epoched MEG and pupil data 
-HLTP_Pupil_prepare_rest_epochs
-
-
-# just a list of artifact components
-HLTP_bad_ica_components
-
-# sensor-level cross-correlation between pupil and brin
+#-------------------------------------------------------------------------------
+# 2. Analysis
+#-------------------------------------------------------------------------------
+01_pupil_timecourse_analysis
+02_pupil_fast_events
+03_SDT
+# sensor-level cross-correlation between pupil and brain
 Sensor_pupil_cross_corr
