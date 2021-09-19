@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul  2 17:40:59 2019
+This file includes general definitions releted to experimental setup and paradigm design, some defaults too.
 
 @author: podvae01
 """

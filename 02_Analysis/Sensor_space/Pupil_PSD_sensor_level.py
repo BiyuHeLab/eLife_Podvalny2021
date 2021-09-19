@@ -3,7 +3,7 @@
 """
 Created on Tue Feb 11 08:14:29 2020
 
-In this script I analyze chnages in PSD accoridng to pupil size in 2-sec win of
+In this script I analyze changes in PSD according to pupil size in 2-sec win of
 rest and pre-stimulus 
 
 @author: podvae01

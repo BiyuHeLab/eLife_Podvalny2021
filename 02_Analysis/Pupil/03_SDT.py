@@ -333,22 +333,3 @@ for roi in range(n_roi):
         stats_for_SDT(sdt_df, IV, savetag = '', _reml = False)
 correct_pvals_by_roi(savetag = 'res')
 
-
-# TODO: goto the place in code where I write th below df and fix its name 
-# until then combine the two dataframes:
-# df = pd.read_pickle(HLTP_pupil.MEG_pro_dir + 
-#                                 '/results/all_subj_bhv_df_w_roi_pwr.pkl') 
-# df = df[ ~((df.index == 288) & (df.subject == 'BJB'))]
-# bhv_df['pupil'] = df.pupil_size_pre.values
-# for fband, _ in HLTP_pupil.freq_bands.items():
-#         for roi in range(7):
-#             bhv_df[fband + str(roi)] = df[fband + str(roi)].values
-# b = 'task_prestim'
-
-# for subject in HLTP_pupil.subjects:            
-#     pupil_states = HLTP_pupil.load(
-#                             HLTP_pupil.result_dir + '/pupil_states_' + 
-#                                        b + subject + '.pkl')
-#     bhv_df.loc[bhv_df.subject == subject,  "pupil"] = pupil_states.mean_pupil       
-# bhv_df.to_pickle(HLTP_pupil.MEG_pro_dir +
-#                              '/results/' + df_name + '.pkl')
