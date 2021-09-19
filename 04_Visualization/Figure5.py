@@ -78,6 +78,36 @@ def plot_coef_table():
     ax.axis('off')
 
 
+def plot_res_power_BHV(savedir):
+    ylims = {'HR': 0.02, 'FAR': 0.02,
+             'c': 0.05, 'd': 0.05, 'p_corr': 0.02, 'catRT': 0.02}
+    ylabels = {'HR': 'Hit Rate', 'FAR': 'FAR',
+               'c': 'criterion', 'd': 'sensitivity', 'p_corr': 'p correct',
+               'catRT': 'cat. RT'}
+    # group_percentile = np.arange(10, 100, 20)
+    for bhv_var in ['HR', 'FAR', 'c', 'd', 'p_corr', 'catRT']:
+        [table_par_e, table_pvals, table_pvals_corr] = HLTP_pupil.load(HLTP_pupil.result_dir +
+                                                                       '/respe_pval_' + bhv_var + '.pkl')
+
+        fig, ax = plt.subplots(1, 1, figsize=(1.5, 2))
+        plt.imshow(table_par_e, vmin=-ylims[bhv_var], vmax=ylims[bhv_var],
+                   cmap='Spectral_r')
+        for (j, i), _ in np.ndenumerate(table_pvals):
+            if table_pvals_corr[j, i] < 0.05:  # corrected for mc
+                ax.text(i, j, '*', color='w', ha='center', va='center', fontsize=13)
+            elif table_pvals[j, i] < 0.05:  # uncorrected
+                ax.text(i, j, '+', color='w', ha='center', va='center', fontsize=10)
+        ax.axis('off')
+        # plt.box(True)
+        # ax.spines['top'].set_visible(True);    ax.spines['right'].set_visible(True)
+        fig.savefig(savedir + '_betas_' + bhv_var + '.png', dpi=800,
+                    bbox_inches='tight', transparent=True)
+
+# FIGURE Power -> Behavior
+# Figure 5
+savedir = figures_dir + '/res_pwr_bhv_'
+
+plot_res_power_BHV(savedir)
 img_type = 'all'
 scores, coefs, mean_perm, pop_pval = HLTP_pupil.load(MEG_pro_dir + '/pupil_result/predict_rec_from_' + img_type)
 m_types = [ 'power', 'power_pupil', 'power_residual', 'pupil']
