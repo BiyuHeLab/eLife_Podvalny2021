@@ -3,8 +3,7 @@
 """
 Created on Thu Feb 13 18:25:51 2020
 
-I want this folder to contain source data for main figures, reported
-as dataframes or csv data
+Source data for main figures, attached as CSV files
 
 @author: podvae01
 """
@@ -100,39 +99,3 @@ prepare_supp_fig1_csv()
 
 
 
-
-
-
-
-
-# report the result of the effect of residual power on behavior
-
-bhv_vars = ['HR', 'FAR', 'c', 'd', 'p_corr', 'catRT']
-RSNs = ['Vis','SM','DAN','VAN','Lim','FPN', 'DMN']
-kwords = ['fband', 'roi', 'Coef', 'pval', 'std',
-          'bic']
-n_roi = 7
-savetag = 'res'
-all_df = []
-idx = 0
-for bhv_var in bhv_vars:
-    for bi, band in enumerate(HLTP_pupil.freq_bands.keys()):
-        for roi in range(7):
-            LM_res_dict = { i : [] for i in kwords }
-            idx += 1
-
-            IV =  band + str(roi)
-            save_name = IV + savetag + '_' + bhv_var
-            mdf = pd.read_pickle(
-                HLTP_pupil.result_dir + '/mixedlmL_' + save_name +'.pkl')
-
-            LM_res_dict['fband']  = band
-            LM_res_dict['roi']    = RSNs[roi]
-            LM_res_dict['BHV'] = [bhv_var]
-            LM_res_dict['Coef']  = "{:.3f}".format(mdf.params[2])
-            LM_res_dict['pval'] = "{:.3f}".format(mdf.pvalues[2])
-            LM_res_dict['std']  = "{:.3f}".format(mdf.bse[2])
-            LM_res_dict['bic']  = "{:.3f}".format(mdf.bic)
-            all_df.append(pd.DataFrame(LM_res_dict.copy(), index = [idx]))
-
-(pd.concat(all_df) ).to_csv(HLTP_pupil.result_dir + '/LM_respower_bhv_stats_file.csv')
