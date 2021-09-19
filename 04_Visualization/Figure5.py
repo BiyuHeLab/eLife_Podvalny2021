@@ -82,6 +82,7 @@ img_type = 'all'
 scores, coefs, mean_perm, pop_pval = HLTP_pupil.load(MEG_pro_dir + '/pupil_result/predict_rec_from_' + img_type)
 m_types = [ 'power', 'power_pupil', 'power_residual', 'pupil']
 data = [scores[t] for t in m_types]
+
 chance = [mean_perm[t] for t in m_types]
 pair_bar_plot(data, chance, img_type)
 plot_coef(coefs['power_pupil'], 'power_pupil')
